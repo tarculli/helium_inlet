@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AGILENT 34970A Monitor</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #121212;
+      color: #e0e0e0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 { margin-bottom: 5px; font-size: 22px; color: #ffffff; }
+
+    #status {
+      font-size: 14px;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+
+    /* Container for SVG Diagram */
+    .schematic-container {
+      background-color: #1e1e1e;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      padding: 20px;
+    }
+
+    .footer {
+      margin-top: 15px;
+      font-size: 12px;
+      color: #888;
+      text-align: center;
+    }
+
+    /* Styling interactive SVG components */
+    .sensor-box {
+      fill: #2a2a2a;
+      stroke: #444;
+      stroke-width: 2px;
+      rx: 8px;
+    }
+
+    .sensor-title {
+      fill: #aaa;
+      font-size: 11px;
+      font-weight: bold;
+    }
+
+    .sensor-value {
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .pipe-line {
+      stroke: #555;
+      stroke-width: 6px;
+      stroke-linecap: round;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>AGILENT 34970A INLET MONITOR</h1>
+  <div id="status" style="color: orange;">● Initializing...</div>
+
+  <div class="schematic-container">
+    <!-- SVG SYSTEM SCHEMATIC -->
+    <svg width="600" height="300" viewBox="0 0 600 300">
+      
+      <!-- Piping Schematic Lines -->
+      <path class="pipe-line" d="M 50 150 L 550 150" />
+      <path class="pipe-line" d="M 180 150 L 180 80" />
+      <path class="pipe-line" d="M 420 150 L 420 80" />
+
+      <!-- OVERLAY CARD 1: Channel 116 (Penning B Pressure) -->
+      <g transform="translate(90, 20)">
+        <rect class="sensor-box" width="180" height="80" />
+        <text x="15" y="25" class="sensor-title">CH 116 (PRESSURE)</text>
+        <text id="val-pressure" x="15" y="60" class="sensor-value" fill="#63b3ed">---.--- mbar</text>
+      </g>
+
+      <!-- OVERLAY CARD 2: Channel 102 (Thermocouple Temp) -->
+      <g transform="translate(330, 20)">
+        <rect class="sensor-box" width="180" height="80" />
+        <text x="15" y="25" class="sensor-title">CH 102 (PV TC TEMP)</text>
+        <text id="val-temp" x="15" y="60" class="sensor-value" fill="#68d391">---.-- °C</text>
+      </g>
+
+      <!-- Chamber / Vacuum Block Diagram Node -->
+      <rect x="230" y="120" width="140" height="60" fill="#333" stroke="#666" stroke-width="2" rx="5" />
+      <text x="250" y="155" fill="#fff" font-size="14" font-weight="bold">MAIN CELL</text>
+
+    </svg>
+  </div>
+
+  <div class="footer">
+    <div id="last-update">Last Update: Waiting for data...</div>
+    <div id="device-idn">Device: Disconnected</div>
+  </div>
+
+  <!-- AUTO-RECONNECTING WEBSOCKET CLIENT SCRIPT -->
+  <script>
+    let ws;
+
+    function connectWebSocket() {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      
+      ws = new WebSocket(wsUrl);
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+
+        // Update SVG Schematic Readouts
+        document.getElementById("val-pressure").textContent = data.pressure;
+        document.getElementById("val-temp").textContent = data.temp;
+
+        // Update Status & Footer
+        const statusEl = document.getElementById("status");
+        statusEl.textContent = data.status;
+        statusEl.style.color = data.status_color;
+
+        document.getElementById("last-update").textContent = `Last Update: ${data.timestamp}`;
+        document.getElementById("device-idn").textContent = data.idn;
+      };
+
+      ws.onclose = () => {
+        const statusEl = document.getElementById("status");
+        statusEl.textContent = "● Web Interface Disconnected! Reconnecting...";
+        statusEl.style.color = "#f85149";
+        
+        // Retry connection every 3 seconds if connection drops
+        setTimeout(connectWebSocket, 3000);
+      };
+
+      ws.onerror = (err) => {
+        ws.close();
+      };
+    }
+
+    // Initialize connection on load
+    connectWebSocket();
+  </script>
+</body>
+</html>
