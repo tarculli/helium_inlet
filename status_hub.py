@@ -169,7 +169,7 @@ class StatusHubApp(ctk.CTk):
                     # Update GUI labels safely
                     self.update_readouts(p_str, t_c_str, f"Last Update: {timestamp}")
 
-                    time.sleep(1.5)
+                    time.sleep(1.0)
 
             except (serial.SerialException, OSError):
                 # Handle disconnection cleanly and retry
