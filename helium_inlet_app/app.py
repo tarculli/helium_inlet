@@ -140,7 +140,7 @@ def startup_event():
 # --- WEBPAGE ROUTE ---
 @app.get("/", response_class=HTMLResponse)
 async def get_dashboard(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="index.html")
 
 
 # --- WEBSOCKET STREAMING ENDPOINT ---
