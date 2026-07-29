@@ -16,7 +16,7 @@ system_logs = []
 
 
 def log_event(message: str, level: str = "INFO"):
-    """Appends a new system event log with a timestamp."""
+    """Appends a timestamped log entry to the event queue."""
     timestamp = time.strftime("%H:%M:%S")
     entry = {"time": timestamp, "level": level, "msg": message}
     system_logs.append(entry)
@@ -24,8 +24,8 @@ def log_event(message: str, level: str = "INFO"):
         system_logs.pop(0)
 
 
-# Initialize starting log
-log_event("System initialized. Background workers starting...", "INFO")
+# Initialize startup log
+log_event("Control hub initialized. Telemetry thread starting...", "INFO")
 
 # --- GLOBAL TELEMETRY STATE ---
 telemetry_data = {
@@ -35,10 +35,14 @@ telemetry_data = {
     "logs": system_logs,
     # Engine A
     "ch104": "---.-- °C",
+    "ch104_val": None,
     "ch103": "---.-- °C",
+    "ch103_val": None,
     # Engine B
     "ch101": "---.-- °C",
+    "ch101_val": None,
     "ch102": "---.-- °C",
+    "ch102_val": None,
     # Chamber
     "ch115_p": "Pending Table",
     "ch115_v": "---.-- V",
@@ -56,6 +60,7 @@ telemetry_data = {
 
 
 def parse_scpi_list(raw_response: str):
+    """Parses comma-separated SCPI float responses safely."""
     if not raw_response:
         return []
     results = []
@@ -68,14 +73,16 @@ def parse_scpi_list(raw_response: str):
 
 
 def format_temp(val):
+    """Formats Type-T TC temperature or checks for open circuit (~9.9E37)."""
     if val is None:
         return "---.-- °C"
-    if val > 9e9:  # Agilent open thermocouple indicator
+    if val > 9e9:
         return "OPEN / NC"
     return f"{val:.1f} °C"
 
 
 def calc_trap_penning_pressure(volts):
+    """Calculates Trap Penning B pressure: P = 10^( (0.875 * V) - 10.75 ) mbar"""
     if volts is None:
         return "---.--- mbar"
     try:
@@ -87,6 +94,7 @@ def calc_trap_penning_pressure(volts):
 
 # --- BACKGROUND HARDWARE WORKER (1s LOOP) ---
 def serial_hardware_loop():
+    """Continuous background thread querying all Agilent 34970A channels every 1.0s."""
     global telemetry_data
 
     SERIAL_PORT = "/dev/ttyUSB0"
@@ -101,7 +109,7 @@ def serial_hardware_loop():
         device = None
         try:
             if not was_connected:
-                log_event(f"Attempting connection to {SERIAL_PORT} @ {BAUD_RATE} baud...", "INFO")
+                log_event(f"Opening serial port {SERIAL_PORT} @ {BAUD_RATE} baud...", "INFO")
 
             telemetry_data["status"] = "Connecting..."
 
@@ -130,11 +138,11 @@ def serial_hardware_loop():
                 telemetry_data["device"] = f"Device: {idn_response}"
                 telemetry_data["status"] = "● Connected & Streaming"
                 log_event(f"Connected: {idn_response}", "SUCCESS")
-                log_event("Started 1.0s telemetry streaming cycle.", "INFO")
+                log_event("Started 1.0s SCPI hardware polling cycle.", "INFO")
             else:
                 telemetry_data["device"] = "Device: Unknown"
                 telemetry_data["status"] = "● Connected (No ID)"
-                log_event("Connected to serial port, but no SCPI *IDN? response.", "WARN")
+                log_event("Serial port opened, but hardware did not respond to *IDN?.", "WARN")
 
             was_connected = True
 
@@ -142,12 +150,12 @@ def serial_hardware_loop():
             while True:
                 loop_start = time.time()
 
-                # Query Thermocouples
+                # 1. Query Thermocouples (101-104)
                 device.write(f"MEASure:TEMPerature? TC,T,DEF,(@{TC_CHANNELS})\r\n".encode("utf-8"))
                 raw_tc = device.readline().decode("utf-8", errors="ignore").strip()
                 tc_vals = parse_scpi_list(raw_tc)
 
-                # Query Voltages
+                # 2. Query Voltages (112, 113, 115, 116, 118, 119)
                 device.write(f"MEASure:VOLTage:DC? AUTO,DEF,(@{VOLT_CHANNELS})\r\n".encode("utf-8"))
                 raw_volt = device.readline().decode("utf-8", errors="ignore").strip()
                 v_vals = parse_scpi_list(raw_volt)
@@ -160,6 +168,12 @@ def serial_hardware_loop():
                     telemetry_data["ch102"] = format_temp(tc_vals[1])
                     telemetry_data["ch103"] = format_temp(tc_vals[2])
                     telemetry_data["ch104"] = format_temp(tc_vals[3])
+
+                    # Raw numeric floats for chart
+                    telemetry_data["ch101_val"] = round(tc_vals[0], 2) if (tc_vals[0] is not None and tc_vals[0] < 9e9) else None
+                    telemetry_data["ch102_val"] = round(tc_vals[1], 2) if (tc_vals[1] is not None and tc_vals[1] < 9e9) else None
+                    telemetry_data["ch103_val"] = round(tc_vals[2], 2) if (tc_vals[2] is not None and tc_vals[2] < 9e9) else None
+                    telemetry_data["ch104_val"] = round(tc_vals[3], 2) if (tc_vals[3] is not None and tc_vals[3] < 9e9) else None
 
                 # Update Voltages & Pressures
                 if len(v_vals) >= 6:
@@ -180,15 +194,15 @@ def serial_hardware_loop():
                     telemetry_data["ch119_p"] = "Pending Table"
 
                 telemetry_data["timestamp"] = f"Last Update: {timestamp}"
-                telemetry_data["logs"] = system_logs
+                telemetry_data["logs"] = list(system_logs)
 
+                # Maintain 1.0s loop timing
                 elapsed = time.time() - loop_start
-                sleep_time = max(0.1, 1.0 - elapsed)
-                time.sleep(sleep_time)
+                time.sleep(max(0.1, 1.0 - elapsed))
 
-        except (serial.SerialException, OSError) as e:
+        except (serial.SerialException, OSError):
             if was_connected:
-                log_event("Serial communication lost! Retrying...", "WARN")
+                log_event("Serial communication lost! Retrying in 3s...", "WARN")
                 was_connected = False
 
             telemetry_data["status"] = "● Connection Lost! Retrying..."
@@ -217,5 +231,5 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             await websocket.send_json(telemetry_data)
             await asyncio.sleep(1.0)
-    except WebSocketDisconnect:
-        print("Client disconnected from telemetry feed.")
+    except (WebSocketDisconnect, Exception):
+        pass  # Quiet disconnects
