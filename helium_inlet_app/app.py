@@ -1,3 +1,9 @@
+'''
+This script is used to run the telemetry and control loop for the Helium cold-trap/MS instrument, 
+which is then passed to a web app interface
+'''
+
+# Necessary modules and packages
 import asyncio
 import math
 import threading
@@ -7,12 +13,13 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 import serial
 
-app = FastAPI(title="Helium Inlet Control System")
-templates = Jinja2Templates(directory="templates")
+# Web App Initialization
+app = FastAPI(title="Helium Inlet Control System") # Sets up backend server app for this script!
+templates = Jinja2Templates(directory="templates") # Takes the html template from the \templates folder and connects this Python script output to render to our server
 
-# --- LOG MANAGEMENT ---
+# Log Window Management
 MAX_LOG_ENTRIES = 50
-system_logs = []
+system_logs = [] # A list of system events of length defined above, function below adds events to list
 
 
 def log_event(message: str, level: str = "INFO"):
@@ -26,7 +33,7 @@ def log_event(message: str, level: str = "INFO"):
 
 log_event("Control hub initialized. Telemetry thread starting...", "INFO")
 
-# --- GLOBAL TELEMETRY STATE ---
+# Initial Telemetry State
 telemetry_data = {
     "status": "Initializing...",
     "device": "Disconnected",
@@ -74,7 +81,7 @@ def parse_scpi_list(raw_response: str):
             results.append(None)
     return results
 
-
+# Thermocouple 
 def format_temp(val):
     """Formats Type-T TC temperature or checks for open circuit (~9.9E37)."""
     if val is None:
@@ -258,7 +265,7 @@ def serial_hardware_loop():
                     # Trap LoVac Convectron (CH 119)
                     p_str119, p_val19 = calc_convectron_375_pressure(v_vals[5])
                     telemetry_data["ch119_v"] = f"{v_vals[5]:.3f} V" if v_vals[5] is not None else "---.-- V"
-                    telemetry_data["ch119_p"] = p_str19
+                    telemetry_data["ch119_p"] = p_str119
                     telemetry_data["ch119_p_val"] = p_val19
 
                 telemetry_data["timestamp"] = f"Last Update: {timestamp}"
