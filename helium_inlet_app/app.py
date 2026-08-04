@@ -45,10 +45,12 @@ telemetry_data = {
     "ch102_val": None,
     # Chamber
     "ch115_p": "Pending Table",
+    "ch115_p_val": None,  # Raw numeric for plotting
     "ch115_v": "---.-- V",
     "ch113": "---.-- V",
     # Trap
     "ch116_p": "---.--- mbar",
+    "ch116_p_val": None,  # Raw numeric for plotting
     "ch116_v": "---.-- V",
     "ch112": "---.-- V",
     # Convectrons
@@ -81,15 +83,47 @@ def format_temp(val):
     return f"{val:.1f} °C"
 
 
+def calc_aim_sl_pressure(volts):
+    """Calculates Chamber pressure (mbar) for Edwards AIM-SL Gauge (returns float)."""
+    if volts is None or volts < 2.00: return 1.0e-8
+    if volts > 10.00: return 1.0e-2
+
+    aim_sl_table = [
+        (2.00, 1.0e-8), (2.50, 2.4e-8), (3.00, 5.8e-8), (3.20, 8.1e-8),
+        (3.40, 1.1e-7), (3.60, 1.5e-7), (3.80, 2.1e-7), (4.00, 2.9e-7),
+        (4.20, 4.0e-7), (4.40, 5.4e-7), (4.60, 7.3e-7), (4.80, 9.8e-7),
+        (5.00, 1.3e-6), (5.20, 1.7e-6), (5.40, 2.2e-6), (5.60, 2.8e-6),
+        (5.80, 3.6e-6), (6.00, 4.5e-6), (6.20, 5.6e-6), (6.40, 6.9e-6),
+        (6.60, 8.4e-6), (6.80, 1.0e-5), (7.00, 1.2e-5), (7.20, 1.4e-5),
+        (7.40, 1.7e-5), (7.60, 2.0e-5), (7.80, 2.4e-5), (8.00, 2.9e-5),
+        (8.20, 3.5e-5), (8.40, 4.3e-5), (8.60, 5.7e-5), (8.80, 7.9e-5),
+        (9.00, 1.2e-4), (9.20, 1.9e-4), (9.40, 3.3e-4), (9.60, 6.7e-4),
+        (9.80, 1.7e-3), (9.90, 3.6e-3), (10.00, 1.0e-2)
+    ]
+
+    for v, p in aim_sl_table:
+        if abs(volts - v) < 0.001:
+            return p
+
+    for i in range(len(aim_sl_table) - 1):
+        v1, p1 = aim_sl_table[i]
+        v2, p2 = aim_sl_table[i+1]
+        
+        if v1 < volts < v2:
+            log_p1 = math.log10(p1)
+            log_p2 = math.log10(p2)
+            log_p = log_p1 + (volts - v1) * ((log_p2 - log_p1) / (v2 - v1))
+            return 10 ** log_p
+    return 1.0e-8
+
+
 def calc_trap_penning_pressure(volts):
-    """Calculates Trap Penning B pressure: P = 10^( (0.875 * V) - 10.75 ) mbar"""
-    if volts is None:
-        return "---.--- mbar"
+    """Calculates Trap Penning B pressure (returns float)."""
+    if volts is None: return 1.0e-8
     try:
-        pressure_mbar = 10 ** ((volts * 0.875) - 10.75)
-        return f"{pressure_mbar:.2e} mbar"
+        return 10 ** ((volts * 0.875) - 10.75)
     except Exception:
-        return "Error"
+        return 1.0e-8
 
 
 # --- BACKGROUND HARDWARE WORKER (1s LOOP) ---
@@ -177,19 +211,39 @@ def serial_hardware_loop():
 
                 # Update Voltages & Pressures
                 if len(v_vals) >= 6:
-                    # Chamber
-                    telemetry_data["ch115_v"] = f"{v_vals[2]:.3f} V" if v_vals[2] is not None else "---.-- V"
-                    telemetry_data["ch115_p"] = "Pending Table"
-                    telemetry_data["ch113"]   = f"{v_vals[1]:.3f} V" if v_vals[1] is not None else "---.-- V"
+                    
+                    # Chamber (Index 2 is CH 115)
+                    v115 = v_vals[2]
+                    if v115 is not None:
+                        p115_val = calc_aim_sl_pressure(v115)
+                        telemetry_data["ch115_p_val"] = p115_val
+                        telemetry_data["ch115_p"] = f"{p115_val:.2e} mbar"
+                        telemetry_data["ch115_v"] = f"{v115:.3f} V"
+                    else:
+                        telemetry_data["ch115_p_val"] = None
+                        telemetry_data["ch115_p"] = "---.--- mbar"
+                        telemetry_data["ch115_v"] = "---.-- V"
 
-                    # Trap
-                    telemetry_data["ch116_v"] = f"{v_vals[3]:.3f} V" if v_vals[3] is not None else "---.-- V"
-                    telemetry_data["ch116_p"] = calc_trap_penning_pressure(v_vals[3])
-                    telemetry_data["ch112"]   = f"{v_vals[0]:.3f} V" if v_vals[0] is not None else "---.-- V"
+                    telemetry_data["ch113"] = f"{v_vals[1]:.3f} V" if v_vals[1] is not None else "---.-- V"
 
-                    # Convectrons
+                    # Trap (Index 3 is CH 116)
+                    v116 = v_vals[3]
+                    if v116 is not None:
+                        p116_val = calc_trap_penning_pressure(v116)
+                        telemetry_data["ch116_p_val"] = p116_val
+                        telemetry_data["ch116_p"] = f"{p116_val:.2e} mbar"
+                        telemetry_data["ch116_v"] = f"{v116:.3f} V"
+                    else:
+                        telemetry_data["ch116_p_val"] = None
+                        telemetry_data["ch116_p"] = "---.--- mbar"
+                        telemetry_data["ch116_v"] = "---.-- V"
+
+                    telemetry_data["ch112"] = f"{v_vals[0]:.3f} V" if v_vals[0] is not None else "---.-- V"
+
+                    # Convectrons (Index 4 is CH 118, Index 5 is CH 119)
                     telemetry_data["ch118_v"] = f"{v_vals[4]:.3f} V" if v_vals[4] is not None else "---.-- V"
                     telemetry_data["ch118_p"] = "Pending Table"
+                    
                     telemetry_data["ch119_v"] = f"{v_vals[5]:.3f} V" if v_vals[5] is not None else "---.-- V"
                     telemetry_data["ch119_p"] = "Pending Table"
 
@@ -207,6 +261,10 @@ def serial_hardware_loop():
 
             telemetry_data["status"] = "● Connection Lost! Retrying..."
             telemetry_data["device"] = "Device: Disconnected"
+            
+            # Clear plotting values
+            telemetry_data["ch115_p_val"] = None
+            telemetry_data["ch116_p_val"] = None
 
             if device and device.is_open:
                 device.close()

@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Helium Inlet Control Hub</title>
-    <!-- Chart.js CDN -->
+    
+    <!-- Include Chart.js for live plotting -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
         :root {
             --bg: #f8fafc;
@@ -29,7 +31,7 @@
             padding: 20px;
         }
         
-        /* Navigation Header */
+        /* Header */
         .header {
             display: flex;
             justify-content: space-between;
@@ -37,32 +39,32 @@
             background: var(--panel-bg);
             border: 1px solid var(--border-dark);
             border-radius: 12px;
-            padding: 14px 20px;
+            padding: 16px 24px;
             margin-bottom: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
         .header-title {
             margin: 0;
-            font-size: 1.35rem;
+            font-size: 1.4rem;
             font-weight: 800;
-            color: var(--text-main);
             letter-spacing: -0.01em;
+            color: var(--text-main);
         }
         .status-badge {
-            font-size: 0.82rem;
-            padding: 5px 12px;
+            font-size: 0.85rem;
+            padding: 6px 14px;
             border-radius: 20px;
             background: var(--badge-bg);
             color: var(--badge-text);
             font-weight: 700;
         }
         
-        /* Layout Grid */
+        /* Main Layout */
         .layout {
             display: grid;
-            grid-template-columns: 360px 1fr;
+            grid-template-columns: 400px 1fr;
             gap: 20px;
-            align-items: start;
+            min-height: calc(100vh - 120px);
         }
 
         /* Left Diagnostics Stack */
@@ -70,18 +72,18 @@
             background-color: var(--panel-bg);
             border: 1px solid var(--border-dark);
             border-radius: 12px;
-            padding: 16px;
+            padding: 20px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            gap: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
         .panel-title {
-            font-size: 0.95rem;
+            font-size: 1.05rem;
             font-weight: 800;
             color: var(--text-main);
             border-bottom: 2px solid var(--border);
-            padding-bottom: 8px;
+            padding-bottom: 10px;
             margin: 0;
             text-transform: uppercase;
             letter-spacing: 0.05em;
@@ -91,16 +93,16 @@
         .location-section {
             background: var(--card-bg);
             border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 10px 14px;
+            border-radius: 10px;
+            padding: 12px 16px;
         }
         .location-header {
-            font-size: 0.75rem;
+            font-size: 0.8rem;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.08em;
             color: var(--accent);
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }
 
         /* Sensor Rows */
@@ -115,7 +117,7 @@
             border-bottom: none;
         }
         .sensor-label {
-            font-size: 0.85rem;
+            font-size: 0.88rem;
             font-weight: 600;
             color: var(--text-muted);
         }
@@ -123,85 +125,72 @@
             text-align: right;
         }
         .primary-val {
-            font-size: 1.05rem;
+            font-size: 1.1rem;
             font-weight: 700;
-            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
             color: var(--text-main);
         }
         .subtext-val {
-            font-size: 0.75rem;
-            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+            font-size: 0.78rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
             color: var(--subtext);
             margin-top: 1px;
             font-weight: 500;
         }
 
-        /* Right Column Stack */
-        .right-col {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        /* Live Plot Panel (Compact Height) */
-        .chart-card {
-            background-color: var(--panel-bg);
-            border: 1px solid var(--border-dark);
-            border-radius: 12px;
-            padding: 16px 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-        }
-        .chart-container {
-            position: relative;
-            height: 220px; /* Compact & readable aspect ratio */
-            width: 100%;
-            margin-top: 10px;
-        }
-
-        /* Messages & Event Log Panel */
-        .log-card {
-            background-color: var(--panel-bg);
-            border: 1px solid var(--border-dark);
-            border-radius: 12px;
-            padding: 16px 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-        }
-        .log-box {
-            background-color: var(--bg);
-            border: 1px solid var(--border);
+        /* Log Panel Console */
+        .log-container {
+            background: #0f172a;
             border-radius: 8px;
-            padding: 12px;
+            padding: 10px 12px;
             height: 180px;
             overflow-y: auto;
-            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-            font-size: 0.8rem;
-            margin-top: 10px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.76rem;
             display: flex;
             flex-direction: column;
             gap: 6px;
         }
-        .log-entry {
+        .log-item {
             display: flex;
-            gap: 10px;
-            align-items: baseline;
-            border-bottom: 1px dashed var(--border);
-            padding-bottom: 4px;
+            gap: 8px;
+            line-height: 1.3;
         }
-        .log-entry:last-child {
-            border-bottom: none;
+        .log-time {
+            color: #64748b;
+            flex-shrink: 0;
         }
-        .log-time { color: var(--subtext); font-weight: 600; }
         .log-tag {
+            font-weight: 700;
             font-size: 0.68rem;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: 800;
+            padding: 1px 4px;
+            border-radius: 3px;
+            flex-shrink: 0;
             text-transform: uppercase;
         }
-        .tag-info { background: #e2e8f0; color: #334155; }
-        .tag-success { background: #dcfce7; color: #15803d; }
-        .tag-warn { background: #fef3c7; color: #b45309; }
-        .log-msg { color: var(--text-main); flex: 1; }
+        .tag-info { background: #1e293b; color: #38bdf8; }
+        .tag-success { background: #064e3b; color: #34d399; }
+        .tag-warn { background: #451a03; color: #fbbf24; }
+        .tag-error { background: #4c0519; color: #f43f5e; }
+        .log-msg { color: #f8fafc; word-break: break-word; }
+
+        /* Right Panel (Plots) */
+        .plots-panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-dark);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .chart-container {
+            position: relative;
+            flex: 1;
+            width: 100%;
+            min-height: 400px;
+            margin-top: 16px;
+        }
     </style>
 </head>
 <body>
@@ -210,35 +199,31 @@
     <div class="header">
         <div>
             <h1 class="header-title">HELIUM INLET DIAGNOSTICS</h1>
-            <div id="device" style="color: var(--text-muted); font-size: 0.8rem; margin-top: 3px; font-weight: 500;">Device: Disconnected</div>
+            <div id="device" style="color: var(--text-muted); font-size: 0.82rem; margin-top: 4px; font-weight: 500;">Device: Disconnected</div>
         </div>
         <div style="text-align: right;">
             <span id="status" class="status-badge">Connecting...</span>
-            <div id="timestamp" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; font-weight: 500;">Waiting for data...</div>
+            <div id="timestamp" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 8px; font-weight: 500;">Waiting for data...</div>
         </div>
     </div>
 
-    <!-- Main Layout Grid -->
+    <!-- Main Content Layout -->
     <div class="layout">
         
-        <!-- LEFT PANEL: Vertically Stacked Readings -->
+        <!-- LEFT PANEL -->
         <div class="panel">
-            <h2 class="panel-title">System Readings</h2>
+            <h2 class="panel-title">System Diagnostics</h2>
 
             <!-- ENGINE A -->
             <div class="location-section">
                 <div class="location-header">Engine A</div>
                 <div class="sensor-row">
                     <span class="sensor-label">HR Temp <span style="font-size: 0.72rem; color: var(--subtext)">(104)</span></span>
-                    <div class="sensor-readout">
-                        <div class="primary-val" id="ch104">---.-- °C</div>
-                    </div>
+                    <div class="sensor-readout"><div class="primary-val" id="ch104">---.-- °C</div></div>
                 </div>
                 <div class="sensor-row">
                     <span class="sensor-label">PV Temp <span style="font-size: 0.72rem; color: var(--subtext)">(103)</span></span>
-                    <div class="sensor-readout">
-                        <div class="primary-val" id="ch103">---.-- °C</div>
-                    </div>
+                    <div class="sensor-readout"><div class="primary-val" id="ch103">---.-- °C</div></div>
                 </div>
             </div>
 
@@ -247,15 +232,11 @@
                 <div class="location-header">Engine B</div>
                 <div class="sensor-row">
                     <span class="sensor-label">HR Temp <span style="font-size: 0.72rem; color: var(--subtext)">(101)</span></span>
-                    <div class="sensor-readout">
-                        <div class="primary-val" id="ch101">---.-- °C</div>
-                    </div>
+                    <div class="sensor-readout"><div class="primary-val" id="ch101">---.-- °C</div></div>
                 </div>
                 <div class="sensor-row">
                     <span class="sensor-label">PV Temp <span style="font-size: 0.72rem; color: var(--subtext)">(102)</span></span>
-                    <div class="sensor-readout">
-                        <div class="primary-val" id="ch102">---.-- °C</div>
-                    </div>
+                    <div class="sensor-readout"><div class="primary-val" id="ch102">---.-- °C</div></div>
                 </div>
             </div>
 
@@ -271,9 +252,7 @@
                 </div>
                 <div class="sensor-row">
                     <span class="sensor-label">Chamber Turbo <span style="font-size: 0.72rem; color: var(--subtext)">(113)</span></span>
-                    <div class="sensor-readout">
-                        <div class="primary-val" id="ch113">---.-- V</div>
-                    </div>
+                    <div class="sensor-readout"><div class="primary-val" id="ch113">---.-- V</div></div>
                 </div>
             </div>
 
@@ -289,9 +268,7 @@
                 </div>
                 <div class="sensor-row">
                     <span class="sensor-label">Trap Turbo <span style="font-size: 0.72rem; color: var(--subtext)">(112)</span></span>
-                    <div class="sensor-readout">
-                        <div class="primary-val" id="ch112">---.-- V</div>
-                    </div>
+                    <div class="sensor-readout"><div class="primary-val" id="ch112">---.-- V</div></div>
                 </div>
             </div>
 
@@ -314,75 +291,93 @@
                 </div>
             </div>
 
+            <!-- SYSTEM LOGS & MESSAGES -->
+            <h2 class="panel-title" style="margin-top: 6px;">Process & Event Logs</h2>
+            <div class="log-container" id="logBox">
+                <!-- Dynamic log lines appear here -->
+            </div>
+
         </div>
 
-        <!-- RIGHT COLUMN: Compact Chart + System Log -->
-        <div class="right-col">
-            
-            <!-- Live Temperature Plot -->
-            <div class="chart-card">
-                <h2 class="panel-title">Live Temperature Trends (°C)</h2>
-                <div class="chart-container">
-                    <canvas id="tempChart"></canvas>
-                </div>
+        <!-- RIGHT PANEL: Live Plot -->
+        <div class="plots-panel">
+            <h2 class="panel-title">Live Vacuum Pressures (mbar)</h2>
+            <div class="chart-container">
+                <canvas id="pressureChart"></canvas>
             </div>
-
-            <!-- Messages & Event Logs Panel -->
-            <div class="log-card">
-                <h2 class="panel-title">System & Event Log</h2>
-                <div class="log-box" id="logBox">
-                    <div class="log-entry">
-                        <span class="log-time">--:--:--</span>
-                        <span class="log-tag tag-info">INFO</span>
-                        <span class="log-msg">Awaiting system events...</span>
-                    </div>
-                </div>
-            </div>
-
         </div>
 
     </div>
 
-    <!-- JavaScript Stream & Chart Management -->
+    <!-- WebSocket & Charting Logic -->
     <script>
-        const MAX_POINTS = 60; // 60 seconds rolling window
+        // --- 1. SETUP CHART.JS ---
+        const ctx = document.getElementById('pressureChart').getContext('2d');
+        const maxDataPoints = 60; // Keep 60 seconds of history on screen
 
-        // --- Chart.js Light Mode Setup ---
-        const ctx = document.getElementById('tempChart').getContext('2d');
-        const tempChart = new Chart(ctx, {
+        const pressureChart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: [],
+                labels: Array(maxDataPoints).fill(''), 
                 datasets: [
-                    { label: 'Eng B HR (101)', borderColor: '#d97706', backgroundColor: '#d9770615', data: [], tension: 0.2, borderWidth: 2, pointRadius: 1 },
-                    { label: 'Eng B PV (102)', borderColor: '#2563eb', backgroundColor: '#2563eb15', data: [], tension: 0.2, borderWidth: 2, pointRadius: 1 },
-                    { label: 'Eng A PV (103)', borderColor: '#059669', backgroundColor: '#05966915', data: [], tension: 0.2, borderWidth: 2, pointRadius: 1 },
-                    { label: 'Eng A HR (104)', borderColor: '#db2777', backgroundColor: '#db277715', data: [], tension: 0.2, borderWidth: 2, pointRadius: 1 }
+                    {
+                        label: 'Chamber (CH 115)',
+                        borderColor: '#2563eb', // Blue
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        data: Array(maxDataPoints).fill(null),
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Trap (CH 116)',
+                        borderColor: '#d97706', // Amber/Orange
+                        backgroundColor: 'rgba(217, 119, 6, 0.1)',
+                        data: Array(maxDataPoints).fill(null),
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1
+                    }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                animation: false,
+                animation: false, // Turn off animation for smoother live updates
                 scales: {
                     x: {
-                        ticks: { color: '#475569', font: { size: 10 } },
-                        grid: { color: '#e2e8f0' }
+                        grid: { display: false }
                     },
                     y: {
-                        ticks: { color: '#475569', font: { size: 10 } },
-                        grid: { color: '#e2e8f0' },
-                        title: { display: true, text: 'Temperature (°C)', color: '#475569', font: { size: 11, weight: '600' } }
+                        type: 'logarithmic',
+                        min: 1e-8,
+                        max: 1e-2,
+                        ticks: {
+                            callback: function(value, index, values) {
+                                // Format ticks nicely as 1e-X
+                                if (value === 1e-8 || value === 1e-7 || value === 1e-6 || 
+                                    value === 1e-5 || value === 1e-4 || value === 1e-3 || value === 1e-2) {
+                                    return value.toExponential();
+                                }
+                                return null; 
+                            }
+                        }
                     }
                 },
                 plugins: {
-                    legend: { labels: { color: '#0f172a', font: { size: 11, weight: '600' } } }
+                    legend: {
+                        position: 'top',
+                    }
                 }
             }
         });
 
-        // --- Render Logs ---
+        // --- 2. SETUP WEBSOCKET ---
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws/telemetry`;
+        let ws;
         let lastLogCount = 0;
+
         function renderLogs(logs) {
             if (!logs || logs.length === lastLogCount) return;
             lastLogCount = logs.length;
@@ -391,71 +386,72 @@
             logBox.innerHTML = '';
 
             logs.forEach(entry => {
-                const div = document.createElement('div');
-                div.className = 'log-entry';
+                const item = document.createElement('div');
+                item.className = 'log-item';
 
                 let tagClass = 'tag-info';
                 if (entry.level === 'SUCCESS') tagClass = 'tag-success';
                 if (entry.level === 'WARN') tagClass = 'tag-warn';
+                if (entry.level === 'ERROR') tagClass = 'tag-error';
 
-                div.innerHTML = `
-                    <span class="log-time">${entry.time}</span>
+                item.innerHTML = `
+                    <span class="log-time">[${entry.time}]</span>
                     <span class="log-tag ${tagClass}">${entry.level}</span>
                     <span class="log-msg">${entry.msg}</span>
                 `;
-                logBox.appendChild(div);
+                logBox.appendChild(item);
             });
 
-            // Auto-scroll to bottom on new log
+            // Auto-scroll to bottom
             logBox.scrollTop = logBox.scrollHeight;
         }
 
-        // --- WebSocket Stream ---
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws/telemetry`;
-        let ws;
+        function updateChart(timeStr, val115, val116) {
+            const timeLabel = timeStr.replace('Last Update: ', '');
+            
+            // Push new labels/data
+            pressureChart.data.labels.push(timeLabel);
+            pressureChart.data.datasets[0].data.push(val115);
+            pressureChart.data.datasets[1].data.push(val116);
+
+            // Shift off old data to create scrolling effect
+            if (pressureChart.data.labels.length > maxDataPoints) {
+                pressureChart.data.labels.shift();
+                pressureChart.data.datasets[0].data.shift();
+                pressureChart.data.datasets[1].data.shift();
+            }
+
+            pressureChart.update();
+        }
 
         function connect() {
             ws = new WebSocket(wsUrl);
 
             ws.onmessage = function(event) {
                 const data = JSON.parse(event.data);
-
-                // 1. Update Readout Text
+                
+                // Update UI elements
                 for (const [key, val] of Object.entries(data)) {
-                    const el = document.getElementById(key);
-                    if (el && typeof val === 'string') {
-                        el.textContent = val;
+                    if (key === 'logs') {
+                        renderLogs(val);
+                    } else if (!key.endsWith('_val')) {
+                        // Skip raw "_val" keys for standard text replacements
+                        const el = document.getElementById(key);
+                        if (el) el.textContent = val;
                     }
                 }
 
-                // 2. Render System Logs
-                if (data.logs) {
-                    renderLogs(data.logs);
+                // Update Plot
+                if (data.status.includes('Connected')) {
+                     updateChart(data.timestamp, data.ch115_p_val, data.ch116_p_val);
                 }
-
-                // 3. Push Point to Chart
-                const now = new Date().toLocaleTimeString();
-                tempChart.data.labels.push(now);
-                tempChart.data.datasets[0].data.push(data.ch101_val);
-                tempChart.data.datasets[1].data.push(data.ch102_val);
-                tempChart.data.datasets[2].data.push(data.ch103_val);
-                tempChart.data.datasets[3].data.push(data.ch104_val);
-
-                // Rolling Buffer Limit (60 seconds)
-                if (tempChart.data.labels.length > MAX_POINTS) {
-                    tempChart.data.labels.shift();
-                    tempChart.data.datasets.forEach(dataset => dataset.data.shift());
-                }
-
-                tempChart.update();
             };
 
             ws.onclose = function() {
-                setTimeout(connect, 1500);
+                setTimeout(connect, 1000);
             };
 
-            ws.onerror = function() {
+            ws.onerror = function(err) {
                 ws.close();
             };
         }
