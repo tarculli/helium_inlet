@@ -24,7 +24,6 @@ def log_event(message: str, level: str = "INFO"):
         system_logs.pop(0)
 
 
-# Initialize startup log
 log_event("Control hub initialized. Telemetry thread starting...", "INFO")
 
 # --- GLOBAL TELEMETRY STATE ---
@@ -100,10 +99,7 @@ def calc_trap_penning_pressure(volts):
 
 
 def calc_chamber_aim_sl_pressure(volts):
-    """
-    Calculates Chamber pressure for Edwards AIM-SL Gauge in Torr based on Table 2 characteristics.
-    Uses log-linear interpolation between known voltage points.
-    """
+    """Calculates Chamber pressure for Edwards AIM-SL Gauge in Torr."""
     if volts is None:
         return "---.--- Torr", None
     if volts < 2.00:
@@ -143,10 +139,7 @@ def calc_chamber_aim_sl_pressure(volts):
 
 
 def calc_convectron_375_pressure(volts):
-    """
-    Calculates Convectron pressure for GP 375 Controller (0-7V Log-Linear setting).
-    Equation: P = 10^(V - 4) Torr
-    """
+    """Calculates Convectron pressure for GP 375 Controller (0-7V Log-Linear) in Torr."""
     if volts is None:
         return "---.--- Torr", None
     
@@ -162,7 +155,7 @@ def calc_convectron_375_pressure(volts):
         return "Error", None
 
 
-# --- BACKGROUND HARDWARE WORKER (1s LOOP) ---
+# --- BACKGROUND HARDWARE WORKER ---
 def serial_hardware_loop():
     """Continuous background thread querying Agilent 34970A channels every 1.0s."""
     global telemetry_data
@@ -216,23 +209,21 @@ def serial_hardware_loop():
 
             was_connected = True
 
-            # Main Polling Loop
             while True:
                 loop_start = time.time()
 
-                # 1. Query Thermocouples (101-104)
+                # Query Thermocouples (101-104)
                 device.write(f"MEASure:TEMPerature? TC,T,DEF,(@{TC_CHANNELS})\r\n".encode("utf-8"))
                 raw_tc = device.readline().decode("utf-8", errors="ignore").strip()
                 tc_vals = parse_scpi_list(raw_tc)
 
-                # 2. Query Voltages (112, 113, 115, 116, 118, 119)
+                # Query Voltages (112, 113, 115, 116, 118, 119)
                 device.write(f"MEASure:VOLTage:DC? AUTO,DEF,(@{VOLT_CHANNELS})\r\n".encode("utf-8"))
                 raw_volt = device.readline().decode("utf-8", errors="ignore").strip()
                 v_vals = parse_scpi_list(raw_volt)
 
                 timestamp = time.strftime("%H:%M:%S")
 
-                # Update Thermocouples
                 if len(tc_vals) >= 4:
                     telemetry_data["ch101"] = format_temp(tc_vals[0])
                     telemetry_data["ch102"] = format_temp(tc_vals[1])
@@ -244,29 +235,28 @@ def serial_hardware_loop():
                     telemetry_data["ch103_val"] = round(tc_vals[2], 2) if (tc_vals[2] is not None and tc_vals[2] < 9e9) else None
                     telemetry_data["ch104_val"] = round(tc_vals[3], 2) if (tc_vals[3] is not None and tc_vals[3] < 9e9) else None
 
-                # Update Voltages & Pressures (Torr)
                 if len(v_vals) >= 6:
                     # Chamber (CH 115)
-                    p_str, p_val = calc_chamber_aim_sl_pressure(v_vals[2])
+                    p_str115, p_val115 = calc_chamber_aim_sl_pressure(v_vals[2])
                     telemetry_data["ch115_v"] = f"{v_vals[2]:.3f} V" if v_vals[2] is not None else "---.-- V"
-                    telemetry_data["ch115_p"] = p_str
-                    telemetry_data["ch115_p_val"] = p_val
+                    telemetry_data["ch115_p"] = p_str115
+                    telemetry_data["ch115_p_val"] = p_val115
                     telemetry_data["ch113"] = f"{v_vals[1]:.3f} V" if v_vals[1] is not None else "---.-- V"
 
                     # Trap (CH 116)
-                    p_str, p_val = calc_trap_penning_pressure(v_vals[3])
+                    p_str116, p_val116 = calc_trap_penning_pressure(v_vals[3])
                     telemetry_data["ch116_v"] = f"{v_vals[3]:.3f} V" if v_vals[3] is not None else "---.-- V"
-                    telemetry_data["ch116_p"] = p_str
-                    telemetry_data["ch116_p_val"] = p_val
+                    telemetry_data["ch116_p"] = p_str116
+                    telemetry_data["ch116_p_val"] = p_val116
                     telemetry_data["ch112"] = f"{v_vals[0]:.3f} V" if v_vals[0] is not None else "---.-- V"
 
-                    # Convectron - Ignored CH 118 (v_vals[4]) for now
+                    # Unconnected HiVac (CH 118)
                     telemetry_data["ch118_v"] = "N/A"
-                    telemetry_data["ch118_p"] = "N/A (Unconnected)"
+                    telemetry_data["ch118_p"] = "N/A"
                     telemetry_data["ch118_p_val"] = None
 
-                    # Convectron - Active CH 119 (v_vals[5])
-                    p_str19, p_val19 = calc_convectron_375_pressure(v_vals[5])
+                    # Trap LoVac Convectron (CH 119)
+                    p_str119, p_val19 = calc_convectron_375_pressure(v_vals[5])
                     telemetry_data["ch119_v"] = f"{v_vals[5]:.3f} V" if v_vals[5] is not None else "---.-- V"
                     telemetry_data["ch119_p"] = p_str19
                     telemetry_data["ch119_p_val"] = p_val19
@@ -274,7 +264,6 @@ def serial_hardware_loop():
                 telemetry_data["timestamp"] = f"Last Update: {timestamp}"
                 telemetry_data["logs"] = list(system_logs)
 
-                # Maintain 1.0s loop timing
                 elapsed = time.time() - loop_start
                 time.sleep(max(0.1, 1.0 - elapsed))
 
