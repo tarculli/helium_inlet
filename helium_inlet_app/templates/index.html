@@ -58,13 +58,35 @@
             color: var(--badge-text);
             font-weight: 700;
         }
+
+        /* Plumbing Diagram Placeholder */
+        .plumbing-placeholder {
+            background: var(--panel-bg);
+            border: 2px dashed var(--border-dark);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            height: 240px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+            transition: background 0.2s ease;
+        }
+        .plumbing-placeholder:hover {
+            background: var(--card-bg);
+        }
+        .plumbing-placeholder h3 { margin: 0 0 8px 0; color: var(--text-main); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+        .plumbing-placeholder p { margin: 0; font-size: 0.9rem; }
         
         /* Main Layout */
         .layout {
             display: grid;
-            grid-template-columns: 400px 1fr;
+            grid-template-columns: 380px 1fr;
             gap: 20px;
-            min-height: calc(100vh - 120px);
         }
 
         /* Left Diagnostics Stack */
@@ -156,10 +178,7 @@
             gap: 8px;
             line-height: 1.3;
         }
-        .log-time {
-            color: #64748b;
-            flex-shrink: 0;
-        }
+        .log-time { color: #64748b; flex-shrink: 0; }
         .log-tag {
             font-weight: 700;
             font-size: 0.68rem;
@@ -175,21 +194,23 @@
         .log-msg { color: #f8fafc; word-break: break-word; }
 
         /* Right Panel (Plots) */
-        .plots-panel {
+        .right-col {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .chart-card {
             background-color: var(--panel-bg);
             border: 1px solid var(--border-dark);
             border-radius: 12px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
+            padding: 16px 20px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
         .chart-container {
             position: relative;
-            flex: 1;
             width: 100%;
-            min-height: 400px;
-            margin-top: 16px;
+            height: 220px; /* Compact so both fit vertically */
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -207,10 +228,16 @@
         </div>
     </div>
 
+    <!-- Future Interactive Diagram -->
+    <div class="plumbing-placeholder">
+        <h3>Interactive Plumbing Diagram</h3>
+        <p>Future Development Area: Visual system status and solenoid valve controls will appear here.</p>
+    </div>
+
     <!-- Main Content Layout -->
     <div class="layout">
         
-        <!-- LEFT PANEL -->
+        <!-- LEFT PANEL (Readings & Logs) -->
         <div class="panel">
             <h2 class="panel-title">System Diagnostics</h2>
 
@@ -291,84 +318,90 @@
                 </div>
             </div>
 
-            <!-- SYSTEM LOGS & MESSAGES -->
+            <!-- SYSTEM LOGS -->
             <h2 class="panel-title" style="margin-top: 6px;">Process & Event Logs</h2>
-            <div class="log-container" id="logBox">
-                <!-- Dynamic log lines appear here -->
-            </div>
+            <div class="log-container" id="logBox"></div>
 
         </div>
 
-        <!-- RIGHT PANEL: Live Plot -->
-        <div class="plots-panel">
-            <h2 class="panel-title">Live Vacuum Pressures (mbar)</h2>
-            <div class="chart-container">
-                <canvas id="pressureChart"></canvas>
+        <!-- RIGHT PANEL (Stacked Plots) -->
+        <div class="right-col">
+            
+            <!-- Temperature Plot -->
+            <div class="chart-card">
+                <h2 class="panel-title">Live Temperature Trends (°C)</h2>
+                <div class="chart-container">
+                    <canvas id="tempChart"></canvas>
+                </div>
             </div>
+
+            <!-- Pressure Plot -->
+            <div class="chart-card">
+                <h2 class="panel-title">Live Vacuum Pressures (mbar)</h2>
+                <div class="chart-container">
+                    <canvas id="pressureChart"></canvas>
+                </div>
+            </div>
+
         </div>
 
     </div>
 
     <!-- WebSocket & Charting Logic -->
     <script>
-        // --- 1. SETUP CHART.JS ---
-        const ctx = document.getElementById('pressureChart').getContext('2d');
-        const maxDataPoints = 60; // Keep 60 seconds of history on screen
+        const maxDataPoints = 60; // 60-second history window
 
-        const pressureChart = new Chart(ctx, {
+        // --- 1. SETUP CHARTS ---
+        
+        // Temperature Chart (Linear)
+        const ctxTemp = document.getElementById('tempChart').getContext('2d');
+        const tempChart = new Chart(ctxTemp, {
+            type: 'line',
+            data: {
+                labels: Array(maxDataPoints).fill(''),
+                datasets: [
+                    { label: 'Eng B HR (101)', borderColor: '#d97706', data: Array(maxDataPoints).fill(null), borderWidth: 2, pointRadius: 0, tension: 0.1 },
+                    { label: 'Eng B PV (102)', borderColor: '#2563eb', data: Array(maxDataPoints).fill(null), borderWidth: 2, pointRadius: 0, tension: 0.1 },
+                    { label: 'Eng A PV (103)', borderColor: '#059669', data: Array(maxDataPoints).fill(null), borderWidth: 2, pointRadius: 0, tension: 0.1 },
+                    { label: 'Eng A HR (104)', borderColor: '#db2777', data: Array(maxDataPoints).fill(null), borderWidth: 2, pointRadius: 0, tension: 0.1 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, animation: false,
+                scales: { x: { display: false }, y: { title: { display: true, text: 'Temperature (°C)' } } },
+                plugins: { legend: { position: 'top', labels: { boxWidth: 12 } } }
+            }
+        });
+
+        // Pressure Chart (Logarithmic)
+        const ctxPress = document.getElementById('pressureChart').getContext('2d');
+        const pressureChart = new Chart(ctxPress, {
             type: 'line',
             data: {
                 labels: Array(maxDataPoints).fill(''), 
                 datasets: [
-                    {
-                        label: 'Chamber (CH 115)',
-                        borderColor: '#2563eb', // Blue
-                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                        data: Array(maxDataPoints).fill(null),
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        tension: 0.1
-                    },
-                    {
-                        label: 'Trap (CH 116)',
-                        borderColor: '#d97706', // Amber/Orange
-                        backgroundColor: 'rgba(217, 119, 6, 0.1)',
-                        data: Array(maxDataPoints).fill(null),
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        tension: 0.1
-                    }
+                    { label: 'Chamber (CH 115)', borderColor: '#2563eb', data: Array(maxDataPoints).fill(null), borderWidth: 2, pointRadius: 0, tension: 0.1 },
+                    { label: 'Trap (CH 116)', borderColor: '#d97706', data: Array(maxDataPoints).fill(null), borderWidth: 2, pointRadius: 0, tension: 0.1 }
                 ]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: false, // Turn off animation for smoother live updates
+                responsive: true, maintainAspectRatio: false, animation: false,
                 scales: {
-                    x: {
-                        grid: { display: false }
-                    },
+                    x: { display: false },
                     y: {
-                        type: 'logarithmic',
-                        min: 1e-8,
-                        max: 1e-2,
+                        type: 'logarithmic', min: 1e-8, max: 1e-2,
                         ticks: {
-                            callback: function(value, index, values) {
-                                // Format ticks nicely as 1e-X
-                                if (value === 1e-8 || value === 1e-7 || value === 1e-6 || 
-                                    value === 1e-5 || value === 1e-4 || value === 1e-3 || value === 1e-2) {
+                            callback: function(value) {
+                                if ([1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2].includes(value)) {
                                     return value.toExponential();
                                 }
                                 return null; 
                             }
-                        }
+                        },
+                        title: { display: true, text: 'Pressure (mbar)' }
                     }
                 },
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    }
-                }
+                plugins: { legend: { position: 'top', labels: { boxWidth: 12 } } }
             }
         });
 
@@ -381,19 +414,15 @@
         function renderLogs(logs) {
             if (!logs || logs.length === lastLogCount) return;
             lastLogCount = logs.length;
-
             const logBox = document.getElementById('logBox');
             logBox.innerHTML = '';
-
             logs.forEach(entry => {
                 const item = document.createElement('div');
                 item.className = 'log-item';
-
                 let tagClass = 'tag-info';
                 if (entry.level === 'SUCCESS') tagClass = 'tag-success';
                 if (entry.level === 'WARN') tagClass = 'tag-warn';
                 if (entry.level === 'ERROR') tagClass = 'tag-error';
-
                 item.innerHTML = `
                     <span class="log-time">[${entry.time}]</span>
                     <span class="log-tag ${tagClass}">${entry.level}</span>
@@ -401,26 +430,36 @@
                 `;
                 logBox.appendChild(item);
             });
-
-            // Auto-scroll to bottom
             logBox.scrollTop = logBox.scrollHeight;
         }
 
-        function updateChart(timeStr, val115, val116) {
+        function updateCharts(timeStr, data) {
             const timeLabel = timeStr.replace('Last Update: ', '');
             
-            // Push new labels/data
+            // Push labels
+            tempChart.data.labels.push(timeLabel);
             pressureChart.data.labels.push(timeLabel);
-            pressureChart.data.datasets[0].data.push(val115);
-            pressureChart.data.datasets[1].data.push(val116);
 
-            // Shift off old data to create scrolling effect
-            if (pressureChart.data.labels.length > maxDataPoints) {
+            // Push Temp Data
+            tempChart.data.datasets[0].data.push(data.ch101_val);
+            tempChart.data.datasets[1].data.push(data.ch102_val);
+            tempChart.data.datasets[2].data.push(data.ch103_val);
+            tempChart.data.datasets[3].data.push(data.ch104_val);
+
+            // Push Pressure Data
+            pressureChart.data.datasets[0].data.push(data.ch115_p_val);
+            pressureChart.data.datasets[1].data.push(data.ch116_p_val);
+
+            // Maintain rolling window
+            if (tempChart.data.labels.length > maxDataPoints) {
+                tempChart.data.labels.shift();
+                tempChart.data.datasets.forEach(ds => ds.data.shift());
+                
                 pressureChart.data.labels.shift();
-                pressureChart.data.datasets[0].data.shift();
-                pressureChart.data.datasets[1].data.shift();
+                pressureChart.data.datasets.forEach(ds => ds.data.shift());
             }
 
+            tempChart.update();
             pressureChart.update();
         }
 
@@ -430,20 +469,19 @@
             ws.onmessage = function(event) {
                 const data = JSON.parse(event.data);
                 
-                // Update UI elements
+                // Update UI text elements
                 for (const [key, val] of Object.entries(data)) {
                     if (key === 'logs') {
                         renderLogs(val);
                     } else if (!key.endsWith('_val')) {
-                        // Skip raw "_val" keys for standard text replacements
                         const el = document.getElementById(key);
                         if (el) el.textContent = val;
                     }
                 }
 
-                // Update Plot
+                // Update Plots
                 if (data.status.includes('Connected')) {
-                     updateChart(data.timestamp, data.ch115_p_val, data.ch116_p_val);
+                     updateCharts(data.timestamp, data);
                 }
             };
 
