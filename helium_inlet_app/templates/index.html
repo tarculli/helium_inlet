@@ -19,6 +19,8 @@
             --border-dark: #cbd5e1;
             --badge-bg: #e0f2fe;
             --badge-text: #0369a1;
+            --open-green: #16a34a;
+            --closed-red: #dc2626;
         }
         * { box-sizing: border-box; }
         body {
@@ -29,7 +31,6 @@
             padding: 20px;
         }
         
-        /* Navigation Header */
         .header {
             display: flex;
             justify-content: space-between;
@@ -56,8 +57,18 @@
             color: var(--badge-text);
             font-weight: 700;
         }
+
+        .btn-fsm {
+            padding: 8px 16px;
+            font-weight: 700;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        .btn-start { background: #16a34a; color: white; }
+        .btn-stop { background: #dc2626; color: white; }
         
-        /* Main Layout Grid */
         .layout {
             display: grid;
             grid-template-columns: 340px 1fr;
@@ -65,7 +76,6 @@
             align-items: start;
         }
 
-        /* Left Diagnostics Panel */
         .panel {
             background-color: var(--panel-bg);
             border: 1px solid var(--border-dark);
@@ -109,43 +119,14 @@
             padding: 6px 0;
             border-bottom: 1px solid var(--border);
         }
-        .sensor-row:last-child {
-            border-bottom: none;
-        }
-        .sensor-label {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: var(--text-muted);
-        }
-        .sensor-readout {
-            text-align: right;
-        }
-        .primary-val {
-            font-size: 1.05rem;
-            font-weight: 700;
-            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-            color: var(--text-main);
-        }
-        .subtext-val {
-            font-size: 0.75rem;
-            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-            color: var(--subtext);
-            margin-top: 1px;
-            font-weight: 500;
-        }
-        .disabled-text {
-            color: #94a3b8 !important;
-            font-size: 0.85rem !important;
-        }
+        .sensor-row:last-child { border-bottom: none; }
+        .sensor-label { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); }
+        .sensor-readout { text-align: right; }
+        .primary-val { font-size: 1.05rem; font-weight: 700; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; color: var(--text-main); }
+        .subtext-val { font-size: 0.75rem; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; color: var(--subtext); margin-top: 1px; font-weight: 500; }
 
-        /* Right Column Stack */
-        .right-col {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
+        .right-col { display: flex; flex-direction: column; gap: 20px; }
 
-        /* Plumbing Diagram Card */
         .diagram-card {
             background-color: var(--panel-bg);
             border: 1px solid var(--border-dark);
@@ -155,20 +136,14 @@
         }
         .diagram-svg-container {
             width: 100%;
-            height: auto;
             margin-top: 10px;
-            background: #fafafa;
-            border: 1px dashed var(--border-dark);
+            background: #ffffff;
+            border: 1px solid var(--border-dark);
             border-radius: 8px;
             padding: 10px;
         }
 
-        /* Chart Grid (Side-by-Side Plots) */
-        .charts-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
+        .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .chart-card {
             background-color: var(--panel-bg);
             border: 1px solid var(--border-dark);
@@ -176,14 +151,8 @@
             padding: 16px 20px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         }
-        .chart-container {
-            position: relative;
-            height: 230px;
-            width: 100%;
-            margin-top: 10px;
-        }
+        .chart-container { position: relative; height: 210px; width: 100%; margin-top: 10px; }
 
-        /* Messages & Event Log Panel */
         .log-card {
             background-color: var(--panel-bg);
             border: 1px solid var(--border-dark);
@@ -205,24 +174,9 @@
             flex-direction: column;
             gap: 6px;
         }
-        .log-entry {
-            display: flex;
-            gap: 10px;
-            align-items: baseline;
-            border-bottom: 1px dashed var(--border);
-            padding-bottom: 4px;
-        }
-        .log-entry:last-child {
-            border-bottom: none;
-        }
+        .log-entry { display: flex; gap: 10px; align-items: baseline; border-bottom: 1px dashed var(--border); padding-bottom: 4px; }
         .log-time { color: var(--subtext); font-weight: 600; }
-        .log-tag {
-            font-size: 0.68rem;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: 800;
-            text-transform: uppercase;
-        }
+        .log-tag { font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 800; text-transform: uppercase; }
         .tag-info { background: #e2e8f0; color: #334155; }
         .tag-success { background: #dcfce7; color: #15803d; }
         .tag-warn { background: #fef3c7; color: #b45309; }
@@ -234,12 +188,15 @@
     <!-- Header -->
     <div class="header">
         <div>
-            <h1 class="header-title">HELIUM INLET DIAGNOSTICS</h1>
+            <h1 class="header-title">HELIUM INLET DIAGNOSTICS & CONTROL</h1>
             <div id="device" style="color: var(--text-muted); font-size: 0.8rem; margin-top: 3px; font-weight: 500;">Device: Disconnected</div>
         </div>
-        <div style="text-align: right;">
-            <span id="status" class="status-badge">Connecting...</span>
-            <div id="timestamp" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; font-weight: 500;">Waiting for data...</div>
+        <div style="display: flex; gap: 15px; align-items: center;">
+            <button id="fsmBtn" class="btn-fsm btn-start" onclick="toggleFSM()">START AUTOMATED CYCLE</button>
+            <div style="text-align: right;">
+                <span id="status" class="status-badge">Connecting...</span>
+                <div id="timestamp" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; font-weight: 500;">Waiting for data...</div>
+            </div>
         </div>
     </div>
 
@@ -249,6 +206,13 @@
         <!-- LEFT PANEL: Readouts -->
         <div class="panel">
             <h2 class="panel-title">System Readouts</h2>
+
+            <!-- FSM STATUS -->
+            <div class="location-section" style="background: #e0f2fe; border-color: #bae6fd;">
+                <div class="location-header" style="color: #0369a1;">State Machine Status</div>
+                <div style="font-size: 0.85rem; font-weight: 700; id='fsm_state'">IDLE</div>
+                <div style="font-size: 0.75rem; color: #0369a1; margin-top: 2px;" id="fsm_phase">Manual Control</div>
+            </div>
 
             <!-- ENGINE A -->
             <div class="location-section">
@@ -286,43 +250,21 @@
                         <div class="subtext-val" id="ch115_v">---.-- V</div>
                     </div>
                 </div>
-                <div class="sensor-row">
-                    <span class="sensor-label">Chamber Turbo <span style="font-size: 0.72rem; color: var(--subtext)">(113)</span></span>
-                    <div class="sensor-readout"><div class="primary-val" id="ch113">---.-- V</div></div>
-                </div>
             </div>
 
-            <!-- TRAP -->
+            <!-- TRAP & LOVAC -->
             <div class="location-section">
-                <div class="location-header">Trap</div>
+                <div class="location-header">Trap Manifold</div>
                 <div class="sensor-row">
-                    <span class="sensor-label">Penning Gauge <span style="font-size: 0.72rem; color: var(--subtext)">(116)</span></span>
+                    <span class="sensor-label">Trap Penning <span style="font-size: 0.72rem; color: var(--subtext)">(116)</span></span>
                     <div class="sensor-readout">
                         <div class="primary-val" id="ch116_p">---.--- Torr</div>
-                        <div class="subtext-val" id="ch116_v">---.-- V</div>
                     </div>
                 </div>
                 <div class="sensor-row">
-                    <span class="sensor-label">Trap Turbo <span style="font-size: 0.72rem; color: var(--subtext)">(112)</span></span>
-                    <div class="sensor-readout"><div class="primary-val" id="ch112">---.-- V</div></div>
-                </div>
-            </div>
-
-            <!-- CONVECTRONS -->
-            <div class="location-section">
-                <div class="location-header">Convectrons</div>
-                <div class="sensor-row">
-                    <span class="sensor-label" style="color: var(--subtext);">HiVac Gauge <span style="font-size: 0.72rem; color: var(--subtext)">(118)</span></span>
-                    <div class="sensor-readout">
-                        <div class="primary-val disabled-text" id="ch118_p">N/A</div>
-                        <div class="subtext-val disabled-text" id="ch118_v">N/A</div>
-                    </div>
-                </div>
-                <div class="sensor-row">
-                    <span class="sensor-label">Trap LoVac Gauge <span style="font-size: 0.72rem; color: var(--subtext)">(119)</span></span>
+                    <span class="sensor-label">Trap LoVac <span style="font-size: 0.72rem; color: var(--subtext)">(119)</span></span>
                     <div class="sensor-readout">
                         <div class="primary-val" id="ch119_p">---.--- Torr</div>
-                        <div class="subtext-val" id="ch119_v">---.-- V</div>
                     </div>
                 </div>
             </div>
@@ -332,73 +274,78 @@
         <!-- RIGHT COLUMN -->
         <div class="right-col">
             
-            <!-- PLUMBING DIAGRAM SECTION -->
+            <!-- INTERACTIVE PLUMBING DIAGRAM -->
             <div class="diagram-card">
-                <h2 class="panel-title">System Vacuum & Cryo Schematic</h2>
+                <h2 class="panel-title">Interactive Plumbing & Valve Schematic</h2>
                 <div class="diagram-svg-container">
-                    <svg viewBox="0 0 800 210" style="width: 100%; height: auto;">
+                    <svg viewBox="0 0 750 280" style="width: 100%; height: auto;">
                         <defs>
-                            <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                            <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
                                 <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
                             </marker>
                         </defs>
 
-                        <!-- Vacuum Line Pipes -->
-                        <path d="M 120 70 L 680 70" stroke="#cbd5e1" stroke-width="8" fill="none"/>
-                        <path d="M 220 70 L 220 150 L 580 150 L 580 70" stroke="#cbd5e1" stroke-width="6" fill="none"/>
+                        <!-- INLET & COV VALVE -->
+                        <rect x="20" y="110" width="80" height="40" rx="6" fill="#e2e8f0" stroke="#475569" stroke-width="2"/>
+                        <text x="60" y="134" text-anchor="middle" font-size="10" font-weight="bold">COV (SAMPLE)</text>
 
-                        <!-- MAIN CHAMBER -->
-                        <rect x="50" y="30" width="120" height="80" rx="10" fill="#ffffff" stroke="#0284c7" stroke-width="2.5"/>
-                        <text x="110" y="55" text-anchor="middle" font-size="12" font-weight="bold" fill="#0f172a">CHAMBER</text>
-                        <text x="110" y="78" text-anchor="middle" font-size="11" font-weight="bold" fill="#2563eb" id="diag_p115">---.--- Torr</text>
-                        <text x="110" y="94" text-anchor="middle" font-size="9" fill="#64748b">CH 115 (AIM-SL)</text>
+                        <!-- PIPES FROM COV TO TRAPS -->
+                        <path d="M 100 130 L 140 130 L 140 60 L 180 60" stroke="#cbd5e1" stroke-width="5" fill="none"/>
+                        <path d="M 100 130 L 140 130 L 140 200 L 180 200" stroke="#cbd5e1" stroke-width="5" fill="none"/>
 
-                        <!-- TRAP VESSEL -->
-                        <rect x="340" y="30" width="120" height="80" rx="10" fill="#ffffff" stroke="#d97706" stroke-width="2.5"/>
-                        <text x="400" y="55" text-anchor="middle" font-size="12" font-weight="bold" fill="#0f172a">TRAP LINE</text>
-                        <text x="400" y="78" text-anchor="middle" font-size="11" font-weight="bold" fill="#d97706" id="diag_p116">---.--- Torr</text>
-                        <text x="400" y="94" text-anchor="middle" font-size="9" fill="#64748b">CH 116 (Penning)</text>
+                        <!-- ENGINE A TRAP -->
+                        <rect x="180" y="30" width="120" height="60" rx="8" fill="#ffffff" stroke="#0284c7" stroke-width="2"/>
+                        <text x="240" y="52" text-anchor="middle" font-size="11" font-weight="bold">ENGINE A TRAP</text>
+                        <text x="240" y="70" text-anchor="middle" font-size="10" fill="#2563eb" id="svg_temp_a">---.-- °C</text>
 
-                        <!-- LOVAC CONVECTRON (119) -->
-                        <circle cx="580" cy="150" r="24" fill="#ffffff" stroke="#059669" stroke-width="2"/>
-                        <text x="580" y="146" text-anchor="middle" font-size="9" font-weight="bold" fill="#059669">119 LoVac</text>
-                        <text x="580" y="160" text-anchor="middle" font-size="8" font-weight="bold" fill="#0f172a" id="diag_p119">---</text>
+                        <!-- ENGINE B TRAP -->
+                        <rect x="180" y="170" width="120" height="60" rx="8" fill="#ffffff" stroke="#0284c7" stroke-width="2"/>
+                        <text x="240" y="192" text-anchor="middle" font-size="11" font-weight="bold">ENGINE B TRAP</text>
+                        <text x="240" y="210" text-anchor="middle" font-size="10" fill="#2563eb" id="svg_temp_b">---.-- °C</text>
 
-                        <!-- TURBO PUMPS -->
-                        <polygon points="210,130 230,130 220,105" fill="#64748b"/>
-                        <text x="220" y="100" text-anchor="middle" font-size="9" font-weight="bold" fill="#475569">CH Turbo (113)</text>
+                        <!-- WASTE VALVES -->
+                        <rect id="svg_v_waste_a" x="340" y="40" width="60" height="30" rx="4" fill="#dc2626"/>
+                        <text x="370" y="59" text-anchor="middle" font-size="9" font-weight="bold" fill="white">WASTE A</text>
 
-                        <polygon points="490,90 510,90 500,65" fill="#64748b"/>
-                        <text x="500" y="60" text-anchor="middle" font-size="9" font-weight="bold" fill="#475569">Trap Turbo (112)</text>
+                        <rect id="svg_v_waste_b" x="340" y="185" width="60" height="30" rx="4" fill="#dc2626"/>
+                        <text x="370" y="204" text-anchor="middle" font-size="9" font-weight="bold" fill="white">WASTE B</text>
 
-                        <!-- ENGINES (CRYOPANELS) -->
-                        <rect x="630" y="35" width="120" height="70" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2"/>
-                        <text x="690" y="52" text-anchor="middle" font-size="11" font-weight="bold" fill="#0f172a">ENGINES A & B</text>
-                        <text x="690" y="70" text-anchor="middle" font-size="9" fill="#475569" id="diag_eng_a">Eng A: ---.-- °C</text>
-                        <text x="690" y="86" text-anchor="middle" font-size="9" fill="#475569" id="diag_eng_b">Eng B: ---.-- °C</text>
+                        <!-- PIPES TO 3-WAY INLET -->
+                        <path d="M 300 60 L 460 60 L 460 110" stroke="#cbd5e1" stroke-width="5" fill="none"/>
+                        <path d="M 300 200 L 460 200 L 460 150" stroke="#cbd5e1" stroke-width="5" fill="none"/>
+
+                        <!-- 3-WAY MS INLET VALVE -->
+                        <circle id="svg_3way" cx="460" cy="130" r="22" fill="#0284c7"/>
+                        <text x="460" y="134" text-anchor="middle" font-size="9" font-weight="bold" fill="white">3-WAY</text>
+
+                        <!-- PIPE TO MASS SPEC -->
+                        <path d="M 482 130 L 580 130" stroke="#cbd5e1" stroke-width="6" fill="none" marker-end="url(#arrow)"/>
+                        
+                        <!-- MASS SPEC BOX -->
+                        <rect x="580" y="100" width="120" height="60" rx="8" fill="#0f172a"/>
+                        <text x="640" y="135" text-anchor="middle" font-size="11" font-weight="bold" fill="white">MASS SPEC</text>
+
+                        <!-- WASTE MANIFOLD PIPES -->
+                        <path d="M 400 55 L 430 55 L 430 250 L 520 250" stroke="#94a3b8" stroke-width="4" fill="none"/>
+                        <path d="M 400 200 L 430 200" stroke="#94a3b8" stroke-width="4" fill="none"/>
+
+                        <!-- WASTE TURBO PUMP -->
+                        <rect id="svg_waste_turbo" x="520" y="230" width="90" height="40" rx="6" fill="#16a34a"/>
+                        <text x="565" y="254" text-anchor="middle" font-size="9" font-weight="bold" fill="white">WASTE TURBO</text>
                     </svg>
                 </div>
             </div>
 
-            <!-- SIDE-BY-SIDE PLOTS (PRESSURE & TEMPERATURE) -->
+            <!-- SIDE-BY-SIDE PLOTS -->
             <div class="charts-grid">
-                
-                <!-- LIVE PRESSURE PLOT (LOG SCALE) -->
                 <div class="chart-card">
                     <h2 class="panel-title">Live Pressures (Torr)</h2>
-                    <div class="chart-container">
-                        <canvas id="pressureChart"></canvas>
-                    </div>
+                    <div class="chart-container"><canvas id="pressureChart"></canvas></div>
                 </div>
-
-                <!-- LIVE TEMPERATURE PLOT -->
                 <div class="chart-card">
                     <h2 class="panel-title">Live Temperatures (°C)</h2>
-                    <div class="chart-container">
-                        <canvas id="tempChart"></canvas>
-                    </div>
+                    <div class="chart-container"><canvas id="tempChart"></canvas></div>
                 </div>
-
             </div>
 
             <!-- SYSTEM LOGS PANEL -->
@@ -419,46 +366,38 @@
 
     <!-- JavaScript Stream & Plotting -->
     <script>
-        const MAX_POINTS = 60; // 60 seconds history
+        let isFsmEnabled = false;
 
-        // --- 1. SETUP LIVE PRESSURE CHART (LOG SCALE) ---
+        function toggleFSM() {
+            isFsmEnabled = !isFsmEnabled;
+            fetch('/api/control/fsm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enable: isFsmEnabled })
+            });
+        }
+
+        // CHART SETUP
         const ctxP = document.getElementById('pressureChart').getContext('2d');
         const pressureChart = new Chart(ctxP, {
             type: 'line',
             data: {
                 labels: [],
                 datasets: [
-                    { label: 'Chamber (115)', borderColor: '#2563eb', backgroundColor: '#2563eb15', data: [], tension: 0.1, borderWidth: 2, pointRadius: 0 },
-                    { label: 'Trap (116)', borderColor: '#d97706', backgroundColor: '#d9770615', data: [], tension: 0.1, borderWidth: 2, pointRadius: 0 },
-                    { label: 'LoVac (119)', borderColor: '#059669', backgroundColor: '#05966915', data: [], tension: 0.1, borderWidth: 2, pointRadius: 0 }
+                    { label: 'Chamber (115)', borderColor: '#2563eb', data: [], tension: 0.1, borderWidth: 2, pointRadius: 0 },
+                    { label: 'Trap (116)', borderColor: '#d97706', data: [], tension: 0.1, borderWidth: 2, pointRadius: 0 },
+                    { label: 'LoVac (119)', borderColor: '#059669', data: [], tension: 0.1, borderWidth: 2, pointRadius: 0 }
                 ]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: false,
+                responsive: true, maintainAspectRatio: false, animation: false,
                 scales: {
-                    x: { ticks: { color: '#475569', font: { size: 9 } }, grid: { display: false } },
-                    y: {
-                        type: 'logarithmic',
-                        min: 1e-8,
-                        max: 1e3,
-                        ticks: {
-                            color: '#475569',
-                            font: { size: 9 },
-                            callback: function(val) {
-                                if ([1e-8, 1e-6, 1e-4, 1e-2, 1, 100].includes(val)) return val.toExponential();
-                                return null;
-                            }
-                        },
-                        grid: { color: '#e2e8f0' }
-                    }
-                },
-                plugins: { legend: { labels: { color: '#0f172a', font: { size: 10, weight: '600' } } } }
+                    x: { ticks: { color: '#475569', font: { size: 9 } } },
+                    y: { type: 'logarithmic', min: 1e-8, max: 1e3 }
+                }
             }
         });
 
-        // --- 2. SETUP LIVE TEMPERATURE CHART ---
         const ctxT = document.getElementById('tempChart').getContext('2d');
         const tempChart = new Chart(ctxT, {
             type: 'line',
@@ -472,106 +411,92 @@
                 ]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: false,
-                scales: {
-                    x: { ticks: { color: '#475569', font: { size: 9 } }, grid: { display: false } },
-                    y: { ticks: { color: '#475569', font: { size: 9 } }, grid: { color: '#e2e8f0' } }
-                },
-                plugins: { legend: { labels: { color: '#0f172a', font: { size: 10, weight: '600' } } } }
+                responsive: true, maintainAspectRatio: false, animation: false,
+                scales: { x: { ticks: { color: '#475569', font: { size: 9 } } } }
             }
         });
 
-        // --- 3. RENDER LOGS ---
+        // LOG RENDERER
         let lastLogCount = 0;
         function renderLogs(logs) {
             if (!logs || logs.length === lastLogCount) return;
             lastLogCount = logs.length;
-
-            const logBox = document.getElementById('logBox');
-            logBox.innerHTML = '';
-
-            logs.forEach(entry => {
-                const div = document.createElement('div');
-                div.className = 'log-entry';
-
-                let tagClass = 'tag-info';
-                if (entry.level === 'SUCCESS') tagClass = 'tag-success';
-                if (entry.level === 'WARN') tagClass = 'tag-warn';
-
-                div.innerHTML = `
-                    <span class="log-time">${entry.time}</span>
-                    <span class="log-tag ${tagClass}">${entry.level}</span>
-                    <span class="log-msg">${entry.msg}</span>
-                `;
-                logBox.appendChild(div);
+            const box = document.getElementById("logBox");
+            box.innerHTML = "";
+            logs.forEach(log => {
+                const entry = document.createElement("div");
+                entry.className = "log-entry";
+                let tagClass = log.level === "SUCCESS" ? "tag-success" : (log.level === "WARN" ? "tag-warn" : "tag-info");
+                entry.innerHTML = `<span class="log-time">${log.time}</span><span class="log-tag ${tagClass}">${log.level}</span><span class="log-msg">${log.msg}</span>`;
+                box.appendChild(entry);
             });
-
-            logBox.scrollTop = logBox.scrollHeight;
+            box.scrollTop = box.scrollHeight;
         }
 
-        // --- 4. WEBSOCKET REAL-TIME STREAM ---
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws/telemetry`;
-        let ws;
+        // WEBSOCKET TELEMETRY STREAM
+        const ws = new WebSocket(`ws://${location.host}/ws/telemetry`);
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
 
-        function connect() {
-            ws = new WebSocket(wsUrl);
+            // Update Header & Readouts
+            document.getElementById("status").innerText = data.status;
+            document.getElementById("device").innerText = data.device;
+            document.getElementById("timestamp").innerText = data.timestamp;
 
-            ws.onmessage = function(event) {
-                const data = JSON.parse(event.data);
+            document.getElementById("ch101").innerText = data.ch101;
+            document.getElementById("ch102").innerText = data.ch102;
+            document.getElementById("ch103").innerText = data.ch103;
+            document.getElementById("ch104").innerText = data.ch104;
+            document.getElementById("ch115_p").innerText = data.ch115_p;
+            document.getElementById("ch115_v").innerText = data.ch115_v;
+            document.getElementById("ch116_p").innerText = data.ch116_p;
+            document.getElementById("ch119_p").innerText = data.ch119_p;
 
-                // Update text elements
-                for (const [key, val] of Object.entries(data)) {
-                    const el = document.getElementById(key);
-                    if (el && typeof val === 'string') {
-                        el.textContent = val;
-                    }
-                }
+            // Update SVG Diagram Values & Valve States
+            document.getElementById("svg_temp_a").innerText = data.ch103;
+            document.getElementById("svg_temp_b").innerText = data.ch102;
 
-                // Update Diagram Badges
-                if (data.ch115_p) document.getElementById('diag_p115').textContent = data.ch115_p;
-                if (data.ch116_p) document.getElementById('diag_p116').textContent = data.ch116_p;
-                if (data.ch119_p) document.getElementById('diag_p119').textContent = data.ch119_p;
-                if (data.ch103) document.getElementById('diag_eng_a').textContent = `Eng A: ${data.ch103}`;
-                if (data.ch102) document.getElementById('diag_eng_b').textContent = `Eng B: ${data.ch102}`;
+            const fsmBtn = document.getElementById("fsmBtn");
+            if (data.fsm.enabled) {
+                fsmBtn.innerText = "STOP AUTOMATED CYCLE";
+                fsmBtn.className = "btn-fsm btn-stop";
+            } else {
+                fsmBtn.innerText = "START AUTOMATED CYCLE";
+                fsmBtn.className = "btn-fsm btn-start";
+            }
 
-                // Update Logs
-                if (data.logs) renderLogs(data.logs);
+            document.getElementById("fsm_state").innerText = data.fsm.state;
+            document.getElementById("fsm_phase").innerText = data.fsm.phase_desc;
 
-                // Push Data to Pressure Plot
-                const now = new Date().toLocaleTimeString();
-                pressureChart.data.labels.push(now);
-                pressureChart.data.datasets[0].data.push(data.ch115_p_val);
-                pressureChart.data.datasets[1].data.push(data.ch116_p_val);
-                pressureChart.data.datasets[2].data.push(data.ch119_p_val);
+            // Valve colors
+            document.getElementById("svg_v_waste_a").setAttribute("fill", data.control.v_waste_a ? "#16a34a" : "#dc2626");
+            document.getElementById("svg_v_waste_b").setAttribute("fill", data.control.v_waste_b ? "#16a34a" : "#dc2626");
+            document.getElementById("svg_waste_turbo").setAttribute("fill", data.control.turbo_waste ? "#16a34a" : "#dc2626");
 
-                if (pressureChart.data.labels.length > MAX_POINTS) {
-                    pressureChart.data.labels.shift();
-                    pressureChart.data.datasets.forEach(ds => ds.data.shift());
-                }
-                pressureChart.update();
+            // Chart Updates
+            const now = new Date().toLocaleTimeString();
+            if (pressureChart.data.labels.length > 60) {
+                pressureChart.data.labels.shift();
+                pressureChart.data.datasets.forEach(d => d.data.shift());
+                tempChart.data.labels.shift();
+                tempChart.data.datasets.forEach(d => d.data.shift());
+            }
 
-                // Push Data to Temp Plot
-                tempChart.data.labels.push(now);
-                tempChart.data.datasets[0].data.push(data.ch101_val);
-                tempChart.data.datasets[1].data.push(data.ch102_val);
-                tempChart.data.datasets[2].data.push(data.ch103_val);
-                tempChart.data.datasets[3].data.push(data.ch104_val);
+            pressureChart.data.labels.push(now);
+            pressureChart.data.datasets[0].data.push(data.ch115_p_val);
+            pressureChart.data.datasets[1].data.push(data.ch116_p_val);
+            pressureChart.data.datasets[2].data.push(data.ch119_p_val);
+            pressureChart.update();
 
-                if (tempChart.data.labels.length > MAX_POINTS) {
-                    tempChart.data.labels.shift();
-                    tempChart.data.datasets.forEach(ds => ds.data.shift());
-                }
-                tempChart.update();
-            };
+            tempChart.data.labels.push(now);
+            tempChart.data.datasets[0].data.push(data.ch101_val);
+            tempChart.data.datasets[1].data.push(data.ch102_val);
+            tempChart.data.datasets[2].data.push(data.ch103_val);
+            tempChart.data.datasets[3].data.push(data.ch104_val);
+            tempChart.update();
 
-            ws.onclose = function() { setTimeout(connect, 1500); };
-            ws.onerror = function() { ws.close(); };
-        }
-
-        connect();
+            renderLogs(data.logs);
+        };
     </script>
 </body>
 </html>
