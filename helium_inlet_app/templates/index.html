@@ -1,294 +1,502 @@
-'''
-This script runs the read-only telemetry loop for the Helium cold-trap/MS instrument,
-querying SCPI channels via serial and serving live data to the web interface.
-Control structures remain in place as passive placeholders for future development.
-'''
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Helium Inlet Telemetry Dashboard</title>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --panel-bg: #ffffff;
+            --card-bg: #f1f5f9;
+            --text-main: #0f172a;
+            --text-muted: #475569;
+            --subtext: #64748b;
+            --accent: #0284c7;
+            --border: #e2e8f0;
+            --border-dark: #cbd5e1;
+            --badge-bg: #e0f2fe;
+            --badge-text: #0369a1;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-dark);
+            border-radius: 12px;
+            padding: 14px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .header-title {
+            margin: 0;
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: var(--text-main);
+            letter-spacing: -0.01em;
+        }
+        .status-badge {
+            font-size: 0.82rem;
+            padding: 5px 12px;
+            border-radius: 20px;
+            background: var(--badge-bg);
+            color: var(--badge-text);
+            font-weight: 700;
+        }
+        
+        .layout {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 20px;
+            align-items: start;
+        }
 
-import asyncio
-import math
-import threading
-import time
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
-import serial
+        .panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-dark);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .panel-title {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: var(--text-main);
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 8px;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
 
-# Web App Initialization
-app = FastAPI(title="Helium Inlet Telemetry Hub")
-templates = Jinja2Templates(directory="templates")
+        .location-section {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 14px;
+        }
+        .location-header {
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--accent);
+            margin-bottom: 6px;
+        }
 
-# Log Window Management
-MAX_LOG_ENTRIES = 50
-system_logs = []
+        .sensor-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .sensor-row:last-child { border-bottom: none; }
+        .sensor-label { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); }
+        .sensor-readout { text-align: right; }
+        .primary-val { font-size: 1.05rem; font-weight: 700; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; color: var(--text-main); }
+        .subtext-val { font-size: 0.75rem; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; color: var(--subtext); margin-top: 1px; font-weight: 500; }
+        .disabled-text { color: #94a3b8 !important; font-size: 0.85rem !important; }
 
+        .right-col { display: flex; flex-direction: column; gap: 20px; }
 
-def log_event(message: str, level: str = "INFO"):
-    """Appends a timestamped log entry to the event queue."""
-    timestamp = time.strftime("%H:%M:%S")
-    entry = {"time": timestamp, "level": level, "msg": message}
-    system_logs.append(entry)
-    if len(system_logs) > MAX_LOG_ENTRIES:
-        system_logs.pop(0)
+        .diagram-card {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-dark);
+            border-radius: 12px;
+            padding: 16px 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .diagram-svg-container {
+            width: 100%;
+            margin-top: 10px;
+            background: #fafafa;
+            border: 1px dashed var(--border-dark);
+            border-radius: 8px;
+            padding: 12px;
+        }
 
+        .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .chart-card {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-dark);
+            border-radius: 12px;
+            padding: 16px 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .chart-container { position: relative; height: 210px; width: 100%; margin-top: 10px; }
 
-log_event("Telemetry hub initialized. Starting read-only serial loop...", "INFO")
+        .log-card {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-dark);
+            border-radius: 12px;
+            padding: 16px 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .log-box {
+            background-color: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            height: 140px;
+            overflow-y: auto;
+            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+            font-size: 0.8rem;
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .log-entry { display: flex; gap: 10px; align-items: baseline; border-bottom: 1px dashed var(--border); padding-bottom: 4px; }
+        .log-time { color: var(--subtext); font-weight: 600; }
+        .log-tag { font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 800; text-transform: uppercase; }
+        .tag-info { background: #e2e8f0; color: #334155; }
+        .tag-success { background: #dcfce7; color: #15803d; }
+        .tag-warn { background: #fef3c7; color: #b45309; }
+        .log-msg { color: var(--text-main); flex: 1; }
+    </style>
+</head>
+<body>
 
-# Initial Telemetry State (Includes placeholder control states for UI plumbing schematic)
-telemetry_data = {
-    "status": "Initializing...",
-    "device": "Disconnected",
-    "timestamp": "Waiting for data...",
-    "logs": system_logs,
-    
-    # Mode Indicator
-    "mode": "READ-ONLY MONITORING",
+    <!-- Header -->
+    <div class="header">
+        <div>
+            <h1 class="header-title">HELIUM INLET DIAGNOSTICS</h1>
+            <div id="device" style="color: var(--text-muted); font-size: 0.8rem; margin-top: 3px; font-weight: 500;">Device: Disconnected</div>
+        </div>
+        <div style="text-align: right;">
+            <span id="status" class="status-badge">Connecting...</span>
+            <div id="timestamp" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; font-weight: 500;">Waiting for data...</div>
+        </div>
+    </div>
 
-    # Placeholder Control States (for visual schematic preparation)
-    "control": {
-        "v_waste_a": False,      # CLOSED
-        "v_waste_b": False,      # CLOSED
-        "v_ms_inlet": "A",       # Position A
-        "cov_valve": "SAMPLE",
-        "heater_a": False,
-        "heater_b": False,
-        "turbo_waste": True
-    },
+    <!-- Main Layout Grid -->
+    <div class="layout">
+        
+        <!-- LEFT PANEL: Readouts -->
+        <div class="panel">
+            <h2 class="panel-title">System Readouts</h2>
 
-    # Engine A Temperatures
-    "ch104": "---.-- °C", "ch104_val": None,  # HR Temp
-    "ch103": "---.-- °C", "ch103_val": None,  # PV Temp
+            <!-- MODE BADGE -->
+            <div class="location-section" style="background: #f1f5f9; border-color: #cbd5e1;">
+                <div class="location-header" style="color: #475569;">System Mode</div>
+                <div style="font-size: 0.85rem; font-weight: 800; color: #0f172a;">READ-ONLY TELEMETRY</div>
+                <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px;">Hardware Control Disconnected</div>
+            </div>
 
-    # Engine B Temperatures
-    "ch101": "---.-- °C", "ch101_val": None,  # HR Temp
-    "ch102": "---.-- °C", "ch102_val": None,  # PV Temp
+            <!-- ENGINE A -->
+            <div class="location-section">
+                <div class="location-header">Engine A</div>
+                <div class="sensor-row">
+                    <span class="sensor-label">HR Temp <span style="font-size: 0.72rem; color: var(--subtext)">(104)</span></span>
+                    <div class="sensor-readout"><div class="primary-val" id="ch104">---.-- °C</div></div>
+                </div>
+                <div class="sensor-row">
+                    <span class="sensor-label">PV Temp <span style="font-size: 0.72rem; color: var(--subtext)">(103)</span></span>
+                    <div class="sensor-readout"><div class="primary-val" id="ch103">---.-- °C</div></div>
+                </div>
+            </div>
 
-    # Chamber
-    "ch115_p": "---.--- Torr", "ch115_p_val": None, "ch115_v": "---.-- V",
-    "ch113": "---.-- V",
+            <!-- ENGINE B -->
+            <div class="location-section">
+                <div class="location-header">Engine B</div>
+                <div class="sensor-row">
+                    <span class="sensor-label">HR Temp <span style="font-size: 0.72rem; color: var(--subtext)">(101)</span></span>
+                    <div class="sensor-readout"><div class="primary-val" id="ch101">---.-- °C</div></div>
+                </div>
+                <div class="sensor-row">
+                    <span class="sensor-label">PV Temp <span style="font-size: 0.72rem; color: var(--subtext)">(102)</span></span>
+                    <div class="sensor-readout"><div class="primary-val" id="ch102">---.-- °C</div></div>
+                </div>
+            </div>
 
-    # Trap
-    "ch116_p": "---.--- Torr", "ch116_p_val": None, "ch116_v": "---.-- V",
-    "ch112": "---.-- V",
+            <!-- CHAMBER -->
+            <div class="location-section">
+                <div class="location-header">Chamber</div>
+                <div class="sensor-row">
+                    <span class="sensor-label">Penning Gauge <span style="font-size: 0.72rem; color: var(--subtext)">(115)</span></span>
+                    <div class="sensor-readout">
+                        <div class="primary-val" id="ch115_p">---.--- Torr</div>
+                        <div class="subtext-val" id="ch115_v">---.-- V</div>
+                    </div>
+                </div>
+                <div class="sensor-row">
+                    <span class="sensor-label">Chamber Turbo <span style="font-size: 0.72rem; color: var(--subtext)">(113)</span></span>
+                    <div class="sensor-readout"><div class="primary-val" id="ch113">---.-- V</div></div>
+                </div>
+            </div>
 
-    # Convectrons
-    "ch118_p": "N/A", "ch118_p_val": None, "ch118_v": "N/A",
-    "ch119_p": "---.--- Torr", "ch119_p_val": None, "ch119_v": "---.-- V",
-}
+            <!-- TRAP -->
+            <div class="location-section">
+                <div class="location-header">Trap</div>
+                <div class="sensor-row">
+                    <span class="sensor-label">Penning Gauge <span style="font-size: 0.72rem; color: var(--subtext)">(116)</span></span>
+                    <div class="sensor-readout">
+                        <div class="primary-val" id="ch116_p">---.--- Torr</div>
+                        <div class="subtext-val" id="ch116_v">---.-- V</div>
+                    </div>
+                </div>
+                <div class="sensor-row">
+                    <span class="sensor-label">Trap Turbo <span style="font-size: 0.72rem; color: var(--subtext)">(112)</span></span>
+                    <div class="sensor-readout"><div class="primary-val" id="ch112">---.-- V</div></div>
+                </div>
+            </div>
 
+            <!-- CONVECTRONS -->
+            <div class="location-section">
+                <div class="location-header">Convectrons</div>
+                <div class="sensor-row">
+                    <span class="sensor-label" style="color: var(--subtext);">HiVac Gauge <span style="font-size: 0.72rem; color: var(--subtext)">(118)</span></span>
+                    <div class="sensor-readout">
+                        <div class="primary-val disabled-text" id="ch118_p">N/A</div>
+                        <div class="subtext-val disabled-text" id="ch118_v">N/A</div>
+                    </div>
+                </div>
+                <div class="sensor-row">
+                    <span class="sensor-label">Trap LoVac Gauge <span style="font-size: 0.72rem; color: var(--subtext)">(119)</span></span>
+                    <div class="sensor-readout">
+                        <div class="primary-val" id="ch119_p">---.--- Torr</div>
+                        <div class="subtext-val" id="ch119_v">---.-- V</div>
+                    </div>
+                </div>
+            </div>
 
-def parse_scpi_list(raw_response: str):
-    """Parses comma-separated SCPI float responses safely."""
-    if not raw_response:
-        return []
-    results = []
-    for item in raw_response.split(","):
-        try:
-            results.append(float(item.strip()))
-        except ValueError:
-            results.append(None)
-    return results
+        </div>
 
+        <!-- RIGHT COLUMN -->
+        <div class="right-col">
+            
+            <!-- PLUMBING SCHEMATIC CARD -->
+            <div class="diagram-card">
+                <h2 class="panel-title">System Vacuum & Gas Flow Schematic</h2>
+                <div class="diagram-svg-container">
+                    <svg viewBox="0 0 760 260" style="width: 100%; height: auto;">
+                        <defs>
+                            <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                                <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
+                            </marker>
+                        </defs>
 
-def format_temp(val):
-    if val is None:
-        return "---.-- °C"
-    if val > 9e9:
-        return "OPEN / NC"
-    return f"{val:.2f} °C"
+                        <!-- INLET & CHANGE OVER VALVE -->
+                        <rect x="15" y="105" width="85" height="40" rx="6" fill="#e2e8f0" stroke="#475569" stroke-width="2"/>
+                        <text x="57" y="128" text-anchor="middle" font-size="10" font-weight="bold" fill="#0f172a">COV (SAMPLE)</text>
 
+                        <!-- PIPES FROM COV TO TRAPS -->
+                        <path d="M 100 125 L 140 125 L 140 55 L 175 55" stroke="#cbd5e1" stroke-width="5" fill="none"/>
+                        <path d="M 100 125 L 140 125 L 140 195 L 175 195" stroke="#cbd5e1" stroke-width="5" fill="none"/>
 
-def calc_trap_penning_pressure(volts):
-    if volts is None:
-        return "---.--- Torr", None
-    try:
-        pressure_mbar = 10 ** ((volts * 0.875) - 10.75)
-        pressure_torr = pressure_mbar * 0.750062
-        return f"{pressure_torr:.2e} Torr", pressure_torr
-    except Exception:
-        return "Error", None
+                        <!-- ENGINE A TRAP BOX -->
+                        <rect x="175" y="25" width="130" height="60" rx="8" fill="#ffffff" stroke="#0284c7" stroke-width="2"/>
+                        <text x="240" y="46" text-anchor="middle" font-size="11" font-weight="bold" fill="#0f172a">ENGINE A TRAP</text>
+                        <text x="240" y="66" text-anchor="middle" font-size="10" font-weight="bold" fill="#2563eb" id="svg_temp_a">---.-- °C</text>
 
+                        <!-- ENGINE B TRAP BOX -->
+                        <rect x="175" y="165" width="130" height="60" rx="8" fill="#ffffff" stroke="#0284c7" stroke-width="2"/>
+                        <text x="240" y="186" text-anchor="middle" font-size="11" font-weight="bold" fill="#0f172a">ENGINE B TRAP</text>
+                        <text x="240" y="206" text-anchor="middle" font-size="10" font-weight="bold" fill="#2563eb" id="svg_temp_b">---.-- °C</text>
 
-def calc_chamber_aim_sl_pressure(volts):
-    if volts is None:
-        return "---.--- Torr", None
-    if volts < 2.00:
-        return "< 7.5e-09 Torr", 7.5e-9
-    if volts > 10.00:
-        return "> 7.5e-03 Torr", 7.5e-3
+                        <!-- WASTE SOLENOID VALVES -->
+                        <rect id="svg_v_waste_a" x="335" y="38" width="65" height="32" rx="4" fill="#94a3b8"/>
+                        <text x="367" y="58" text-anchor="middle" font-size="9" font-weight="bold" fill="white">WASTE A</text>
 
-    aim_sl_table_torr = [
-        (2.00, 7.5e-9),  (2.50, 1.8e-8), (3.00, 4.4e-8), (3.20, 6.1e-8),
-        (3.40, 8.3e-8),  (3.60, 1.1e-7), (3.80, 1.6e-7), (4.00, 2.2e-7),
-        (4.20, 3.0e-7),  (4.40, 4.1e-7), (4.60, 5.5e-7), (4.80, 7.4e-7),
-        (5.00, 9.8e-7),  (5.20, 1.3e-6), (5.40, 1.7e-6), (5.60, 2.1e-6),
-        (5.80, 2.7e-6),  (6.00, 3.4e-6), (6.20, 4.2e-6), (6.40, 5.2e-6),
-        (6.60, 6.3e-6),  (6.80, 7.5e-6), (7.00, 9.0e-6), (7.20, 1.1e-5),
-        (7.40, 1.3e-5),  (7.60, 1.5e-5), (7.80, 1.8e-5), (8.00, 2.2e-5),
-        (8.20, 2.6e-5),  (8.40, 3.2e-5), (8.60, 4.3e-5), (8.80, 5.9e-5),
-        (9.00, 9.0e-5),  (9.20, 1.4e-4), (9.40, 2.5e-4), (9.60, 5.0e-4),
-        (9.80, 1.3e-3),  (9.90, 2.7e-3), (10.00, 7.5e-3)
-    ]
+                        <rect id="svg_v_waste_b" x="335" y="178" width="65" height="32" rx="4" fill="#94a3b8"/>
+                        <text x="367" y="198" text-anchor="middle" font-size="9" font-weight="bold" fill="white">WASTE B</text>
 
-    for v, p in aim_sl_table_torr:
-        if abs(volts - v) < 0.001:
-            return f"{p:.2e} Torr", p
+                        <!-- PIPES TO 3-WAY INLET -->
+                        <path d="M 305 55 L 470 55 L 470 105" stroke="#cbd5e1" stroke-width="5" fill="none"/>
+                        <path d="M 305 195 L 470 195 L 470 145" stroke="#cbd5e1" stroke-width="5" fill="none"/>
 
-    for i in range(len(aim_sl_table_torr) - 1):
-        v1, p1 = aim_sl_table_torr[i]
-        v2, p2 = aim_sl_table_torr[i+1]
-        if v1 < volts < v2:
-            log_p1 = math.log10(p1)
-            log_p2 = math.log10(p2)
-            log_p = log_p1 + (volts - v1) * ((log_p2 - log_p1) / (v2 - v1))
-            pressure = 10 ** log_p
-            return f"{pressure:.2e} Torr", pressure
+                        <!-- 3-WAY MS INLET VALVE -->
+                        <circle id="svg_3way" cx="470" cy="125" r="22" fill="#0284c7"/>
+                        <text x="470" y="129" text-anchor="middle" font-size="9" font-weight="bold" fill="white">3-WAY</text>
 
-    return "Error", None
+                        <!-- PIPE TO MASS SPEC -->
+                        <path d="M 492 125 L 590 125" stroke="#cbd5e1" stroke-width="6" fill="none" marker-end="url(#arrow)"/>
+                        
+                        <!-- MASS SPEC NODE -->
+                        <rect x="590" y="95" width="130" height="60" rx="8" fill="#0f172a"/>
+                        <text x="655" y="122" text-anchor="middle" font-size="11" font-weight="bold" fill="white">MASS SPEC</text>
+                        <text x="655" y="140" text-anchor="middle" font-size="9" fill="#38bdf8" id="svg_p115">115: --- Torr</text>
 
+                        <!-- WASTE MANIFOLD PIPES & PUMP -->
+                        <path d="M 400 54 L 430 54 L 430 240 L 530 240" stroke="#94a3b8" stroke-width="4" fill="none"/>
+                        <path d="M 400 194 L 430 194" stroke="#94a3b8" stroke-width="4" fill="none"/>
 
-def calc_convectron_375_pressure(volts):
-    if volts is None:
-        return "---.--- Torr", None
-    if volts < 0.0:
-        return "< 1.00e-04 Torr", 1.0e-4
-    if volts > 7.1:
-        return "> 1000 Torr", 1000.0
-    try:
-        pressure_torr = 10 ** (volts - 4)
-        return f"{pressure_torr:.2e} Torr", pressure_torr
-    except Exception:
-        return "Error", None
+                        <!-- WASTE TURBO PUMP NODE -->
+                        <rect id="svg_waste_turbo" x="530" y="220" width="100" height="40" rx="6" fill="#475569"/>
+                        <text x="580" y="244" text-anchor="middle" font-size="9" font-weight="bold" fill="white">WASTE TURBO</text>
+                    </svg>
+                </div>
+            </div>
 
+            <!-- SIDE-BY-SIDE PLOTS (PRESSURE & TEMPERATURE) -->
+            <div class="charts-grid">
+                
+                <!-- LIVE PRESSURE PLOT -->
+                <div class="chart-card">
+                    <h2 class="panel-title">Live Pressures (Torr)</h2>
+                    <div class="chart-container">
+                        <canvas id="pressureChart"></canvas>
+                    </div>
+                </div>
 
-# --- READ-ONLY HARDWARE WORKER ---
-def serial_hardware_loop():
-    """Continuous background thread querying Agilent 34970A every 1.0s."""
-    global telemetry_data
+                <!-- LIVE TEMPERATURE PLOT -->
+                <div class="chart-card">
+                    <h2 class="panel-title">Live Temperatures (°C)</h2>
+                    <div class="chart-container">
+                        <canvas id="tempChart"></canvas>
+                    </div>
+                </div>
 
-    SERIAL_PORT = "/dev/ttyUSB0"
-    BAUD_RATE = 57600
-    TC_CHANNELS = "101,102,103,104"
-    VOLT_CHANNELS = "112,113,115,116,118,119"
+            </div>
 
-    was_connected = False
+            <!-- SYSTEM LOGS PANEL -->
+            <div class="log-card">
+                <h2 class="panel-title">System & Event Log</h2>
+                <div class="log-box" id="logBox">
+                    <div class="log-entry">
+                        <span class="log-time">--:--:--</span>
+                        <span class="log-tag tag-info">INFO</span>
+                        <span class="log-msg">Awaiting system events...</span>
+                    </div>
+                </div>
+            </div>
 
-    while True:
-        device = None
-        try:
-            if not was_connected:
-                log_event(f"Opening serial port {SERIAL_PORT} @ {BAUD_RATE} baud...", "INFO")
+        </div>
 
-            telemetry_data["status"] = "Connecting..."
-            device = serial.Serial(
-                port=SERIAL_PORT, baudrate=BAUD_RATE, bytesize=serial.EIGHTBITS,
-                parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, xonxoff=True,
-                rtscts=False, dsrdtr=False, timeout=2.0
-            )
+    </div>
 
-            device.reset_input_buffer()
-            device.reset_output_buffer()
-            device.write(b"*CLS\r\n")
-            time.sleep(0.1)
-            device.write(b"*IDN?\r\n")
-            time.sleep(0.1)
-            idn_response = device.readline().decode("utf-8", errors="ignore").strip()
+    <!-- JavaScript Telemetry & Plotting Stream -->
+    <script>
+        // CHART 1: PRESSURE (LOG SCALE)
+        const ctxP = document.getElementById('pressureChart').getContext('2d');
+        const pressureChart = new Chart(ctxP, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    { label: 'Chamber (115)', borderColor: '#2563eb', data: [], tension: 0.1, borderWidth: 2, pointRadius: 0 },
+                    { label: 'Trap (116)', borderColor: '#d97706', data: [], tension: 0.1, borderWidth: 2, pointRadius: 0 },
+                    { label: 'LoVac (119)', borderColor: '#059669', data: [], tension: 0.1, borderWidth: 2, pointRadius: 0 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, animation: false,
+                scales: {
+                    x: { ticks: { color: '#475569', font: { size: 9 } }, grid: { display: false } },
+                    y: { type: 'logarithmic', min: 1e-8, max: 1e3, grid: { color: '#e2e8f0' } }
+                },
+                plugins: { legend: { labels: { color: '#0f172a', font: { size: 10, weight: '600' } } } }
+            }
+        });
 
-            if idn_response:
-                telemetry_data["device"] = f"Device: {idn_response}"
-                telemetry_data["status"] = "● Connected & Streaming"
-                log_event(f"Connected: {idn_response}", "SUCCESS")
-                log_event("Started 1.0s SCPI telemetry polling loop.", "INFO")
-            else:
-                telemetry_data["device"] = "Device: Unknown"
-                telemetry_data["status"] = "● Connected (No ID)"
+        // CHART 2: TEMPERATURE
+        const ctxT = document.getElementById('tempChart').getContext('2d');
+        const tempChart = new Chart(ctxT, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    { label: 'Eng B HR (101)', borderColor: '#d97706', data: [], tension: 0.2, borderWidth: 1.5, pointRadius: 0 },
+                    { label: 'Eng B PV (102)', borderColor: '#2563eb', data: [], tension: 0.2, borderWidth: 1.5, pointRadius: 0 },
+                    { label: 'Eng A PV (103)', borderColor: '#059669', data: [], tension: 0.2, borderWidth: 1.5, pointRadius: 0 },
+                    { label: 'Eng A HR (104)', borderColor: '#db2777', data: [], tension: 0.2, borderWidth: 1.5, pointRadius: 0 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, animation: false,
+                scales: {
+                    x: { ticks: { color: '#475569', font: { size: 9 } }, grid: { display: false } },
+                    y: { ticks: { color: '#475569', font: { size: 9 } }, grid: { color: '#e2e8f0' } }
+                },
+                plugins: { legend: { labels: { color: '#0f172a', font: { size: 10, weight: '600' } } } }
+            }
+        });
 
-            was_connected = True
+        // LOG RENDERER
+        let lastLogCount = 0;
+        function renderLogs(logs) {
+            if (!logs || logs.length === lastLogCount) return;
+            lastLogCount = logs.length;
+            const box = document.getElementById("logBox");
+            box.innerHTML = "";
+            logs.forEach(log => {
+                const entry = document.createElement("div");
+                entry.className = "log-entry";
+                let tagClass = log.level === "SUCCESS" ? "tag-success" : (log.level === "WARN" ? "tag-warn" : "tag-info");
+                entry.innerHTML = `<span class="log-time">${log.time}</span><span class="log-tag ${tagClass}">${log.level}</span><span class="log-msg">${log.msg}</span>`;
+                box.appendChild(entry);
+            });
+            box.scrollTop = box.scrollHeight;
+        }
 
-            while True:
-                loop_start = time.time()
+        // WEBSOCKET TELEMETRY CONNECTION
+        const ws = new WebSocket(`ws://${location.host}/ws/telemetry`);
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
 
-                # QUERY THERMOCOUPLES (101-104)
-                device.write(f"MEASure:TEMPerature? TC,T,DEF,(@{TC_CHANNELS})\r\n".encode("utf-8"))
-                raw_tc = device.readline().decode("utf-8", errors="ignore").strip()
-                tc_vals = parse_scpi_list(raw_tc)
+            // Update Panel Cards
+            document.getElementById("status").innerText = data.status;
+            document.getElementById("device").innerText = data.device;
+            document.getElementById("timestamp").innerText = data.timestamp;
 
-                # QUERY VOLTAGES (112, 113, 115, 116, 118, 119)
-                device.write(f"MEASure:VOLTage:DC? AUTO,DEF,(@{VOLT_CHANNELS})\r\n".encode("utf-8"))
-                raw_volt = device.readline().decode("utf-8", errors="ignore").strip()
-                v_vals = parse_scpi_list(raw_volt)
+            document.getElementById("ch101").innerText = data.ch101;
+            document.getElementById("ch102").innerText = data.ch102;
+            document.getElementById("ch103").innerText = data.ch103;
+            document.getElementById("ch104").innerText = data.ch104;
+            document.getElementById("ch115_p").innerText = data.ch115_p;
+            document.getElementById("ch115_v").innerText = data.ch115_v;
+            document.getElementById("ch116_p").innerText = data.ch116_p;
+            document.getElementById("ch116_v").innerText = data.ch116_v;
+            document.getElementById("ch119_p").innerText = data.ch119_p;
+            document.getElementById("ch119_v").innerText = data.ch119_v;
+            document.getElementById("ch113").innerText = data.ch113;
+            document.getElementById("ch112").innerText = data.ch112;
 
-                timestamp = time.strftime("%H:%M:%S")
+            // Bind Live Readouts Directly Into SVG Plumbing Diagram Nodes
+            document.getElementById("svg_temp_a").innerText = data.ch103;
+            document.getElementById("svg_temp_b").innerText = data.ch102;
+            document.getElementById("svg_p115").innerText = "115: " + data.ch115_p;
 
-                if len(tc_vals) >= 4:
-                    telemetry_data["ch101"] = format_temp(tc_vals[0])
-                    telemetry_data["ch102"] = format_temp(tc_vals[1])
-                    telemetry_data["ch103"] = format_temp(tc_vals[2])
-                    telemetry_data["ch104"] = format_temp(tc_vals[3])
+            // Chart Data Streaming (60 Point Rolling Window)
+            const now = new Date().toLocaleTimeString();
+            if (pressureChart.data.labels.length > 60) {
+                pressureChart.data.labels.shift();
+                pressureChart.data.datasets.forEach(d => d.data.shift());
+                tempChart.data.labels.shift();
+                tempChart.data.datasets.forEach(d => d.data.shift());
+            }
 
-                    telemetry_data["ch101_val"] = round(tc_vals[0], 2) if (tc_vals[0] is not None and tc_vals[0] < 9e9) else None
-                    telemetry_data["ch102_val"] = round(tc_vals[1], 2) if (tc_vals[1] is not None and tc_vals[1] < 9e9) else None
-                    telemetry_data["ch103_val"] = round(tc_vals[2], 2) if (tc_vals[2] is not None and tc_vals[2] < 9e9) else None
-                    telemetry_data["ch104_val"] = round(tc_vals[3], 2) if (tc_vals[3] is not None and tc_vals[3] < 9e9) else None
+            pressureChart.data.labels.push(now);
+            pressureChart.data.datasets[0].data.push(data.ch115_p_val);
+            pressureChart.data.datasets[1].data.push(data.ch116_p_val);
+            pressureChart.data.datasets[2].data.push(data.ch119_p_val);
+            pressureChart.update();
 
-                if len(v_vals) >= 6:
-                    # Chamber (CH 115)
-                    p_str115, p_val115 = calc_chamber_aim_sl_pressure(v_vals[2])
-                    telemetry_data["ch115_v"] = f"{v_vals[2]:.3f} V" if v_vals[2] is not None else "---.-- V"
-                    telemetry_data["ch115_p"] = p_str115
-                    telemetry_data["ch115_p_val"] = p_val115
-                    telemetry_data["ch113"] = f"{v_vals[1]:.3f} V" if v_vals[1] is not None else "---.-- V"
+            tempChart.data.labels.push(now);
+            tempChart.data.datasets[0].data.push(data.ch101_val);
+            tempChart.data.datasets[1].data.push(data.ch102_val);
+            tempChart.data.datasets[2].data.push(data.ch103_val);
+            tempChart.data.datasets[3].data.push(data.ch104_val);
+            tempChart.update();
 
-                    # Trap (CH 116)
-                    p_str116, p_val116 = calc_trap_penning_pressure(v_vals[3])
-                    telemetry_data["ch116_v"] = f"{v_vals[3]:.3f} V" if v_vals[3] is not None else "---.-- V"
-                    telemetry_data["ch116_p"] = p_str116
-                    telemetry_data["ch116_p_val"] = p_val116
-                    telemetry_data["ch112"] = f"{v_vals[0]:.3f} V" if v_vals[0] is not None else "---.-- V"
-
-                    # Unconnected HiVac (CH 118)
-                    telemetry_data["ch118_v"] = "N/A"
-                    telemetry_data["ch118_p"] = "N/A"
-                    telemetry_data["ch118_p_val"] = None
-
-                    # Trap LoVac Convectron (CH 119)
-                    p_str119, p_val19 = calc_convectron_375_pressure(v_vals[5])
-                    telemetry_data["ch119_v"] = f"{v_vals[5]:.3f} V" if v_vals[5] is not None else "---.-- V"
-                    telemetry_data["ch119_p"] = p_str119
-                    telemetry_data["ch119_p_val"] = p_val19
-
-                telemetry_data["timestamp"] = f"Last Update: {timestamp}"
-                telemetry_data["logs"] = list(system_logs)
-
-                elapsed = time.time() - loop_start
-                time.sleep(max(0.1, 1.0 - elapsed))
-
-        except (serial.SerialException, OSError):
-            if was_connected:
-                log_event("Serial communication lost! Retrying in 3s...", "WARN")
-                was_connected = False
-            telemetry_data["status"] = "● Connection Lost! Retrying..."
-            telemetry_data["device"] = "Device: Disconnected"
-            if device and device.is_open:
-                device.close()
-            time.sleep(3.0)
-
-
-@app.on_event("startup")
-def startup_event():
-    threading.Thread(target=serial_hardware_loop, daemon=True).start()
-
-
-@app.get("/", response_class=HTMLResponse)
-async def get_dashboard(request: Request):
-    return templates.TemplateResponse(request=request, name="index.html")
-
-
-@app.websocket("/ws/telemetry")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    try:
-        while True:
-            await websocket.send_json(telemetry_data)
-            await asyncio.sleep(1.0)
-    except (WebSocketDisconnect, Exception):
-        pass
+            renderLogs(data.logs);
+        };
+    </script>
+</body>
+</html>
