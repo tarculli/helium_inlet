@@ -23,6 +23,9 @@ def run_io_loop():
 
     while True:
         loop_start = time.time()
+        
+        # Safety initialization so variables always exist
+        tc_vals, v_vals = None, None 
 
         # 1. Connection Management
         if not agilent.connected:
@@ -33,6 +36,8 @@ def run_io_loop():
                 state.telemetry_data["device"] = f"Device: {idn}"
                 state.telemetry_data["status"] = "● Connected & Streaming"
                 state.log_event("Agilent connected.", "SUCCESS")
+                # Skip the rest of this cycle so we can read data on the next one
+                continue 
             else:
                 state.telemetry_data["status"] = "● Connection Lost! Retrying..."
                 time.sleep(3.0)
