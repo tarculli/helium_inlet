@@ -2,12 +2,11 @@ import asyncio
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
 import state
 from config import WEBSOCKET_PUSH_RATE_SEC
 
 app = FastAPI(title="Helium Inlet API")
-app.mount("/static", StaticFiles(directory="web/static"), name="static")
+# Point directly to where index.html is stored
 templates = Jinja2Templates(directory="web/static")
 
 @app.get("/", response_class=HTMLResponse)
