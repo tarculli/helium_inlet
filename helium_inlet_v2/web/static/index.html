@@ -168,7 +168,33 @@
         .tag-info { background: #e2e8f0; color: #334155; }
         .tag-success { background: #dcfce7; color: #15803d; }
         .tag-warn { background: #fef3c7; color: #b45309; }
+        .tag-cmd { background: #e0e7ff; color: #3730a3; }
         .log-msg { color: var(--text-main); flex: 1; }
+
+        /* --- NEW VALVE CONTROL STYLES --- */
+        .valve-btn {
+            width: 100%; 
+            height: 100%;
+            border: none; 
+            border-radius: 4px;
+            font-size: 0.65rem; 
+            font-weight: 800; 
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .valve-closed { 
+            background: #fee2e2; 
+            color: #991b1b; 
+            border: 1px solid #fca5a5; 
+        }
+        .valve-closed:hover { background: #fca5a5; }
+        .valve-open { 
+            background: #dcfce7; 
+            color: #166534; 
+            border: 1px solid #86efac; 
+        }
+        .valve-open:hover { background: #bbf7d0; }
     </style>
 </head>
 <body>
@@ -195,8 +221,8 @@
             <!-- MODE BADGE -->
             <div class="location-section" style="background: #f1f5f9; border-color: #cbd5e1;">
                 <div class="location-header" style="color: #475569;">System Mode</div>
-                <div style="font-size: 0.85rem; font-weight: 800; color: #0f172a;">READ-ONLY TELEMETRY</div>
-                <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px;">Hardware Control Disconnected</div>
+                <div style="font-size: 0.85rem; font-weight: 800; color: #0f172a;">MANUAL OVERRIDE</div>
+                <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px;">Hardware Control Enabled</div>
             </div>
 
             <!-- ENGINE A -->
@@ -291,58 +317,70 @@
                                 <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
                             </marker>
                         </defs>
-
-                        <!-- INLET & CHANGE OVER VALVE -->
-                        <rect x="15" y="105" width="85" height="40" rx="6" fill="#e2e8f0" stroke="#475569" stroke-width="2"/>
-                        <text x="57" y="128" text-anchor="middle" font-size="10" font-weight="bold" fill="#0f172a">COV (SAMPLE)</text>
-
+                
+                        <!-- ========================================== -->
+                        <!-- LAYER 1: PIPES & LINES (Drawn Bottom)      -->
+                        <!-- ========================================== -->
+                        
                         <!-- PIPES FROM COV TO TRAPS -->
                         <path d="M 100 125 L 140 125 L 140 55 L 175 55" stroke="#cbd5e1" stroke-width="5" fill="none"/>
                         <path d="M 100 125 L 140 125 L 140 195 L 175 195" stroke="#cbd5e1" stroke-width="5" fill="none"/>
-
+                
+                        <!-- PIPES TO 3-WAY INLET -->
+                        <path d="M 305 55 L 470 55 L 470 105" stroke="#cbd5e1" stroke-width="5" fill="none"/>
+                        <path d="M 305 195 L 470 195 L 470 145" stroke="#cbd5e1" stroke-width="5" fill="none"/>
+                
+                        <!-- PIPE TO MASS SPEC -->
+                        <path d="M 492 125 L 590 125" stroke="#cbd5e1" stroke-width="6" fill="none" marker-end="url(#arrow)"/>
+                
+                        <!-- WASTE MANIFOLD PIPES & PUMP -->
+                        <path d="M 400 54 L 430 54 L 430 240 L 530 240" stroke="#94a3b8" stroke-width="4" fill="none"/>
+                        <path d="M 400 194 L 430 194" stroke="#94a3b8" stroke-width="4" fill="none"/>
+                
+                        <!-- ========================================== -->
+                        <!-- LAYER 2: NODES & BOXES (Drawn Top)         -->
+                        <!-- ========================================== -->
+                
+                        <!-- INLET & CHANGE OVER VALVE -->
+                        <rect id="cov_rect" x="15" y="105" width="85" height="40" rx="6" fill="#e2e8f0" stroke="#475569" stroke-width="2"/>
+                        <text x="57" y="128" text-anchor="middle" font-size="10" font-weight="bold" fill="#0f172a">COV (SAMPLE)</text>
+                        
+                        <!-- INTERACTIVE HTML BUTTON OVERLAY -->
+                        <foreignObject x="15" y="150" width="85" height="24">
+                            <button id="cov_btn" class="valve-btn valve-closed" onclick="toggleValve('cov')">OPEN</button>
+                        </foreignObject>
+                
                         <!-- ENGINE A TRAP BOX -->
                         <rect x="175" y="25" width="130" height="60" rx="8" fill="#ffffff" stroke="#0284c7" stroke-width="2"/>
                         <text x="240" y="46" text-anchor="middle" font-size="11" font-weight="bold" fill="#0f172a">ENGINE A TRAP</text>
                         <text x="240" y="66" text-anchor="middle" font-size="10" font-weight="bold" fill="#2563eb" id="svg_temp_a">---.-- °C</text>
-
+                
                         <!-- ENGINE B TRAP BOX -->
                         <rect x="175" y="165" width="130" height="60" rx="8" fill="#ffffff" stroke="#0284c7" stroke-width="2"/>
                         <text x="240" y="186" text-anchor="middle" font-size="11" font-weight="bold" fill="#0f172a">ENGINE B TRAP</text>
                         <text x="240" y="206" text-anchor="middle" font-size="10" font-weight="bold" fill="#2563eb" id="svg_temp_b">---.-- °C</text>
-
+                
                         <!-- WASTE SOLENOID VALVES -->
                         <rect id="svg_v_waste_a" x="335" y="38" width="65" height="32" rx="4" fill="#94a3b8"/>
                         <text x="367" y="58" text-anchor="middle" font-size="9" font-weight="bold" fill="white">WASTE A</text>
-
+                
                         <rect id="svg_v_waste_b" x="335" y="178" width="65" height="32" rx="4" fill="#94a3b8"/>
                         <text x="367" y="198" text-anchor="middle" font-size="9" font-weight="bold" fill="white">WASTE B</text>
-
-                        <!-- PIPES TO 3-WAY INLET -->
-                        <path d="M 305 55 L 470 55 L 470 105" stroke="#cbd5e1" stroke-width="5" fill="none"/>
-                        <path d="M 305 195 L 470 195 L 470 145" stroke="#cbd5e1" stroke-width="5" fill="none"/>
-
+                
                         <!-- 3-WAY MS INLET VALVE -->
                         <circle id="svg_3way" cx="470" cy="125" r="22" fill="#0284c7"/>
                         <text x="470" y="129" text-anchor="middle" font-size="9" font-weight="bold" fill="white">3-WAY</text>
-
-                        <!-- PIPE TO MASS SPEC -->
-                        <path d="M 492 125 L 590 125" stroke="#cbd5e1" stroke-width="6" fill="none" marker-end="url(#arrow)"/>
-                        
+                
                         <!-- MASS SPEC NODE -->
                         <rect x="590" y="95" width="130" height="60" rx="8" fill="#0f172a"/>
                         <text x="655" y="122" text-anchor="middle" font-size="11" font-weight="bold" fill="white">MASS SPEC</text>
                         <text x="655" y="140" text-anchor="middle" font-size="9" fill="#38bdf8" id="svg_p115">115: --- Torr</text>
-
-                        <!-- WASTE MANIFOLD PIPES & PUMP -->
-                        <path d="M 400 54 L 430 54 L 430 240 L 530 240" stroke="#94a3b8" stroke-width="4" fill="none"/>
-                        <path d="M 400 194 L 430 194" stroke="#94a3b8" stroke-width="4" fill="none"/>
-
+                
                         <!-- WASTE TURBO PUMP NODE -->
                         <rect id="svg_waste_turbo" x="530" y="220" width="100" height="40" rx="6" fill="#475569"/>
                         <text x="580" y="244" text-anchor="middle" font-size="9" font-weight="bold" fill="white">WASTE TURBO</text>
                     </svg>
                 </div>
-            </div>
 
             <!-- SIDE-BY-SIDE PLOTS (PRESSURE & TEMPERATURE) -->
             <div class="charts-grid">
@@ -383,6 +421,44 @@
 
     <!-- JavaScript Telemetry & Plotting Stream -->
     <script>
+        // --- NEW: VALVE CONTROL LOGIC ---
+        let covState = false; // false = closed, true = open
+        
+        function toggleValve(valveName) {
+            if (valveName === 'cov') {
+                covState = !covState;
+                const btn = document.getElementById('cov_btn');
+                const rect = document.getElementById('cov_rect');
+                
+                if (covState) {
+                    btn.className = "valve-btn valve-open";
+                    btn.innerText = "CLOSE";
+                    rect.setAttribute("stroke", "#22c55e"); // Turn border green
+                    rect.setAttribute("stroke-width", "3");
+                    console.log("Command Triggered: COV Valve Opening...");
+                    injectLocalLog("CMD", "Gas Selector Valve (COV) Opening...");
+                } else {
+                    btn.className = "valve-btn valve-closed";
+                    btn.innerText = "OPEN";
+                    rect.setAttribute("stroke", "#475569"); // Revert border
+                    rect.setAttribute("stroke-width", "2");
+                    console.log("Command Triggered: COV Valve Closing...");
+                    injectLocalLog("CMD", "Gas Selector Valve (COV) Closing...");
+                }
+            }
+        }
+
+        // Helper to push a UI log immediately without waiting for backend
+        function injectLocalLog(level, msg) {
+            const box = document.getElementById("logBox");
+            const entry = document.createElement("div");
+            entry.className = "log-entry";
+            const timeStr = new Date().toLocaleTimeString('en-US', { hour12: false });
+            entry.innerHTML = `<span class="log-time">${timeStr}</span><span class="log-tag tag-cmd">${level}</span><span class="log-msg" style="color: #4f46e5; font-weight: 600;">${msg}</span>`;
+            box.appendChild(entry);
+            box.scrollTop = box.scrollHeight;
+        }
+
         // CHART 1: PRESSURE (LOG SCALE)
         const ctxP = document.getElementById('pressureChart').getContext('2d');
         const pressureChart = new Chart(ctxP, {
@@ -434,14 +510,17 @@
             if (!logs || logs.length === lastLogCount) return;
             lastLogCount = logs.length;
             const box = document.getElementById("logBox");
-            box.innerHTML = "";
-            logs.forEach(log => {
-                const entry = document.createElement("div");
-                entry.className = "log-entry";
-                let tagClass = log.level === "SUCCESS" ? "tag-success" : (log.level === "WARN" ? "tag-warn" : "tag-info");
-                entry.innerHTML = `<span class="log-time">${log.time}</span><span class="log-tag ${tagClass}">${log.level}</span><span class="log-msg">${log.msg}</span>`;
-                box.appendChild(entry);
-            });
+            // Only clear and re-render if it's a completely fresh batch, otherwise we lose our local CMD injects
+            // For a robust system, the backend should echo commands back, but this works for testing!
+            if (logs.length === 1) box.innerHTML = ""; 
+            
+            // Just append the newest log
+            const latestLog = logs[logs.length - 1];
+            const entry = document.createElement("div");
+            entry.className = "log-entry";
+            let tagClass = latestLog.level === "SUCCESS" ? "tag-success" : (latestLog.level === "WARN" ? "tag-warn" : "tag-info");
+            entry.innerHTML = `<span class="log-time">${latestLog.time}</span><span class="log-tag ${tagClass}">${latestLog.level}</span><span class="log-msg">${latestLog.msg}</span>`;
+            box.appendChild(entry);
             box.scrollTop = box.scrollHeight;
         }
 
