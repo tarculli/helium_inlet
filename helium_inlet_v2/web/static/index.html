@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Helium Inlet Telemetry Dashboard</title>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Link to external CSS -->
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <div>
+            <h1 class="header-title">HELIUM INLET DIAGNOSTICS</h1>
+            <div id="device" style="color: var(--text-muted); font-size: 0.8rem; margin-top: 3px; font-weight: 500;">Device: Disconnected</div>
+        </div>
+        <div style="text-align: right;">
+            <span id="status" class="status-badge">Connecting...</span>
+            <div id="timestamp" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; font-weight: 500;">Waiting for data...</div>
+        </div>
+    </div>
+
+    <!-- Main Layout Grid -->
+    <div class="layout">
+        
+        <!-- LEFT PANEL: Readouts -->
+        <div class="panel">
+            <h2 class="panel-title">System Readouts</h2>
+
+            <!-- MODE BADGE -->
+            <div class="location-section" style="background: #f1f5f9; border-color: #cbd5e1;">
+                <div class="location-header" style="color: #475569;">System Mode</div>
+                <div style="font-size: 0.85rem; font-weight: 800; color: #0f172a;">READ-ONLY TELEMETRY</div>
+                <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px;">Hardware Control Disconnected</div>
+            </div>
+
+            <!-- ENGINE A -->
+            <div class="location-section">
+                <div class="location-header">Engine A</div>
+                <div class="sensor-row">
+                    <span class="sensor-label">HR Temp <span style="font-size: 0.72rem; color: var(--subtext)">(104)</span></span>
+                    <div class="sensor-readout"><div class="primary-val" id="ch104">---.-- °C</div></div>
+                </div>
+                <div class="sensor-row">
+                    <span class="sensor-label">PV Temp <span style="font-size: 0.72rem; color: var(--subtext)">(103)</span></span>
+                    <div class="sensor-readout"><div class="primary-val" id="ch103">---.-- °C</div></div>
+                </div>
+            </div>
+
+            <!-- ENGINE B -->
+            <div class="location-section">
+                <div class="location-header">Engine B</div>
+                <div class="sensor-row">
+                    <span class="sensor-label">HR Temp <span style="font-size: 0.72rem; color: var(--subtext)">(101)</span></span>
+                    <div class="sensor-readout"><div class="primary-val" id="ch101">---.-- °C</div></div>
+                </div>
+                <div class="sensor-row">
+                    <span class="sensor-label">PV Temp <span style="font-size: 0.72rem; color: var(--subtext)">(102)</span></span>
+                    <div class="sensor-readout"><div class="primary-val" id="ch102">---.-- °C</div></div>
+                </div>
+            </div>
+
+            <!-- CHAMBER -->
+            <div class="location-section">
+                <div class="location-header">Chamber</div>
+                <div class="sensor-row">
+                    <span class="sensor-label">Penning Gauge <span style="font-size: 0.72rem; color: var(--subtext)">(115)</span></span>
+                    <div class="sensor-readout">
+                        <div class="primary-val" id="ch115_p">---.--- Torr</div>
+                        <div class="subtext-val" id="ch115_v">---.-- V</div>
+                    </div>
+                </div>
+                <div class="sensor-row">
+                    <span class="sensor-label">Chamber Turbo <span style="font-size: 0.72rem; color: var(--subtext)">(113)</span></span>
+                    <div class="sensor-readout"><div class="primary-val" id="ch113">---.-- V</div></div>
+                </div>
+            </div>
+
+            <!-- TRAP -->
+            <div class="location-section">
+                <div class="location-header">Trap</div>
+                <div class="sensor-row">
+                    <span class="sensor-label">Penning Gauge <span style="font-size: 0.72rem; color: var(--subtext)">(116)</span></span>
+                    <div class="sensor-readout">
+                        <div class="primary-val" id="ch116_p">---.--- Torr</div>
+                        <div class="subtext-val" id="ch116_v">---.-- V</div>
+                    </div>
+                </div>
+                <div class="sensor-row">
+                    <span class="sensor-label">Trap Turbo <span style="font-size: 0.72rem; color: var(--subtext)">(112)</span></span>
+                    <div class="sensor-readout"><div class="primary-val" id="ch112">---.-- V</div></div>
+                </div>
+            </div>
+
+            <!-- CONVECTRONS -->
+            <div class="location-section">
+                <div class="location-header">Convectrons</div>
+                <div class="sensor-row">
+                    <span class="sensor-label" style="color: var(--subtext);">HiVac Gauge <span style="font-size: 0.72rem; color: var(--subtext)">(118)</span></span>
+                    <div class="sensor-readout">
+                        <div class="primary-val disabled-text" id="ch118_p">N/A</div>
+                        <div class="subtext-val disabled-text" id="ch118_v">N/A</div>
+                    </div>
+                </div>
+                <div class="sensor-row">
+                    <span class="sensor-label">Trap LoVac Gauge <span style="font-size: 0.72rem; color: var(--subtext)">(119)</span></span>
+                    <div class="sensor-readout">
+                        <div class="primary-val" id="ch119_p">---.--- Torr</div>
+                        <div class="subtext-val" id="ch119_v">---.-- V</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <div class="right-col">
+            
+            <!-- PLUMBING SCHEMATIC CARD -->
+            <div class="diagram-card">
+                <h2 class="panel-title">System Vacuum & Gas Flow Schematic</h2>
+                <div class="diagram-svg-container">
+                    <svg viewBox="0 0 760 260" style="width: 100%; height: auto;">
+                        <defs>
+                            <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                                <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
+                            </marker>
+                        </defs>
+
+                        <!-- INLET & CHANGE OVER VALVE -->
+                        <rect x="15" y="105" width="85" height="40" rx="6" fill="#e2e8f0" stroke="#475569" stroke-width="2"/>
+                        <text x="57" y="128" text-anchor="middle" font-size="10" font-weight="bold" fill="#0f172a">COV (SAMPLE)</text>
+
+                        <!-- PIPES FROM COV TO TRAPS -->
+                        <path d="M 100 125 L 140 125 L 140 55 L 175 55" stroke="#cbd5e1" stroke-width="5" fill="none"/>
+                        <path d="M 100 125 L 140 125 L 140 195 L 175 195" stroke="#cbd5e1" stroke-width="5" fill="none"/>
+
+                        <!-- ENGINE A TRAP BOX -->
+                        <rect x="175" y="25" width="130" height="60" rx="8" fill="#ffffff" stroke="#0284c7" stroke-width="2"/>
+                        <text x="240" y="46" text-anchor="middle" font-size="11" font-weight="bold" fill="#0f172a">ENGINE A TRAP</text>
+                        <text x="240" y="66" text-anchor="middle" font-size="10" font-weight="bold" fill="#2563eb" id="svg_temp_a">---.-- °C</text>
+
+                        <!-- ENGINE B TRAP BOX -->
+                        <rect x="175" y="165" width="130" height="60" rx="8" fill="#ffffff" stroke="#0284c7" stroke-width="2"/>
+                        <text x="240" y="186" text-anchor="middle" font-size="11" font-weight="bold" fill="#0f172a">ENGINE B TRAP</text>
+                        <text x="240" y="206" text-anchor="middle" font-size="10" font-weight="bold" fill="#2563eb" id="svg_temp_b">---.-- °C</text>
+
+                        <!-- WASTE SOLENOID VALVES -->
+                        <rect id="svg_v_waste_a" x="335" y="38" width="65" height="32" rx="4" fill="#94a3b8"/>
+                        <text x="367" y="58" text-anchor="middle" font-size="9" font-weight="bold" fill="white">WASTE A</text>
+
+                        <rect id="svg_v_waste_b" x="335" y="178" width="65" height="32" rx="4" fill="#94a3b8"/>
+                        <text x="367" y="198" text-anchor="middle" font-size="9" font-weight="bold" fill="white">WASTE B</text>
+
+                        <!-- PIPES TO 3-WAY INLET -->
+                        <path d="M 305 55 L 470 55 L 470 105" stroke="#cbd5e1" stroke-width="5" fill="none"/>
+                        <path d="M 305 195 L 470 195 L 470 145" stroke="#cbd5e1" stroke-width="5" fill="none"/>
+
+                        <!-- 3-WAY MS INLET VALVE -->
+                        <circle id="svg_3way" cx="470" cy="125" r="22" fill="#0284c7"/>
+                        <text x="470" y="129" text-anchor="middle" font-size="9" font-weight="bold" fill="white">3-WAY</text>
+
+                        <!-- PIPE TO MASS SPEC -->
+                        <path d="M 492 125 L 590 125" stroke="#cbd5e1" stroke-width="6" fill="none" marker-end="url(#arrow)"/>
+                        
+                        <!-- MASS SPEC NODE -->
+                        <rect x="590" y="95" width="130" height="60" rx="8" fill="#0f172a"/>
+                        <text x="655" y="122" text-anchor="middle" font-size="11" font-weight="bold" fill="white">MASS SPEC</text>
+                        <text x="655" y="140" text-anchor="middle" font-size="9" fill="#38bdf8" id="svg_p115">115: --- Torr</text>
+
+                        <!-- WASTE MANIFOLD PIPES & PUMP -->
+                        <path d="M 400 54 L 430 54 L 430 240 L 530 240" stroke="#94a3b8" stroke-width="4" fill="none"/>
+                        <path d="M 400 194 L 430 194" stroke="#94a3b8" stroke-width="4" fill="none"/>
+
+                        <!-- WASTE TURBO PUMP NODE -->
+                        <rect id="svg_waste_turbo" x="530" y="220" width="100" height="40" rx="6" fill="#475569"/>
+                        <text x="580" y="244" text-anchor="middle" font-size="9" font-weight="bold" fill="white">WASTE TURBO</text>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- SIDE-BY-SIDE PLOTS (PRESSURE & TEMPERATURE) -->
+            <div class="charts-grid">
+                
+                <!-- LIVE PRESSURE PLOT -->
+                <div class="chart-card">
+                    <h2 class="panel-title">Live Pressures (Torr)</h2>
+                    <div class="chart-container">
+                        <canvas id="pressureChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- LIVE TEMPERATURE PLOT -->
+                <div class="chart-card">
+                    <h2 class="panel-title">Live Temperatures (°C)</h2>
+                    <div class="chart-container">
+                        <canvas id="tempChart"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- SYSTEM LOGS PANEL -->
+            <div class="log-card">
+                <h2 class="panel-title">System & Event Log</h2>
+                <div class="log-box" id="logBox">
+                    <div class="log-entry">
+                        <span class="log-time">--:--:--</span>
+                        <span class="log-tag tag-info">INFO</span>
+                        <span class="log-msg">Awaiting system events...</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Link to external JS -->
+    <script src="/static/app.js"></script>
+</body>
+</html>
