@@ -28,6 +28,9 @@
             --warning-bg: #78350f;
             --warning-text: #fde68a;
             --warning-border: #d97706;
+
+            --pipe-on: #22c55e;
+            --pipe-off: #ef4444;
         }
         * { box-sizing: border-box; }
         body {
@@ -44,11 +47,11 @@
         .dashboard-wrapper {
             width: 100%;
             max-width: 1400px;
-            background-color: var(--border-dark); /* Acts as the line color for flush gaps */
+            background-color: var(--border-dark);
             border: 1px solid var(--border-dark);
             display: flex;
             flex-direction: column;
-            gap: 1px; /* 1px internal borders */
+            gap: 1px;
         }
 
         .header {
@@ -79,7 +82,7 @@
             display: grid;
             grid-template-columns: 340px 1fr;
             gap: 1px;
-            align-items: stretch; /* Make columns flush bottom */
+            align-items: stretch;
         }
 
         .panel {
@@ -149,6 +152,34 @@
             padding: 12px;
         }
 
+        .flow-controls {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .state-btn {
+            background: var(--panel-bg);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            padding: 10px 6px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            cursor: pointer;
+            border-radius: 4px;
+            text-transform: uppercase;
+            transition: all 0.2s;
+            line-height: 1.3;
+        }
+
+        .state-btn.active {
+            background: #0369a1;
+            color: #ffffff;
+            border-color: var(--accent);
+            box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+        }
+
         .charts-grid { 
             display: grid; 
             grid-template-columns: 1fr 1fr; 
@@ -180,55 +211,24 @@
         .tag-danger { background: #7f1d1d; color: #fca5a5; }
         .log-msg { color: var(--text-main); flex: 1; }
 
-        /* --- BUTTON CONTROLS --- */
-        .valve-btn, .ctrl-btn {
-            width: 100%; 
-            border: none; 
-            font-size: 0.65rem; 
-            font-weight: 800; 
-            cursor: pointer;
-            transition: all 0.2s;
-            font-family: inherit;
-            text-transform: uppercase;
-        }
-        .valve-btn { height: 100%; }
-        
-        /* Dark mode valve colors */
-        .valve-closed { 
-            background: var(--danger-bg); 
-            color: var(--danger-text); 
-            border: 1px solid var(--danger-border); 
-        }
-        .valve-closed:hover { background: #991b1b; }
-        
-        .valve-open { 
-            background: #064e3b; 
-            color: #6ee7b7; 
-            border: 1px solid #059669; 
-        }
-        .valve-open:hover { background: #065f46; }
-
-        /* New Control Buttons */
         .ctrl-btn {
+            width: 100%;
             padding: 10px;
             margin-top: 8px;
             font-size: 0.75rem;
             letter-spacing: 0.05em;
+            border: none;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
         }
-        .btn-danger {
-            background: #991b1b;
-            color: #fef2f2;
-            border: 1px solid #dc2626;
-        }
+        .btn-danger { background: #991b1b; color: #fef2f2; border: 1px solid #dc2626; }
         .btn-danger:hover { background: #b91c1c; }
-        
-        .btn-warning {
-            background: #ca8a04;
-            color: #020617;
-            border: 1px solid #eab308;
-        }
+        .btn-warning { background: #ca8a04; color: #020617; border: 1px solid #eab308; }
         .btn-warning:hover { background: #eab308; }
 
+        .pipe { stroke-width: 4; fill: none; transition: stroke 0.3s ease; }
     </style>
 </head>
 <body>
@@ -347,76 +347,86 @@
                 <div class="diagram-card">
                     <h2 class="panel-title">System Vacuum & Gas Flow Schematic</h2>
                     <div class="diagram-svg-container">
-                        <svg viewBox="0 0 760 260" style="width: 100%; height: auto;">
+                        <svg viewBox="0 0 760 300" style="width: 100%; height: auto;">
                             <defs>
-                                <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                                <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                                     <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
                                 </marker>
                             </defs>
-                    
+
                             <!-- ========================================== -->
-                            <!-- LAYER 1: PIPES & LINES (Drawn Bottom)      -->
+                            <!-- PIPES & FLOW LINES                         -->
                             <!-- ========================================== -->
-                            
-                            <!-- PIPES FROM COV TO TRAPS -->
-                            <path d="M 100 125 L 140 125 L 140 55 L 175 55" stroke="#475569" stroke-width="5" fill="none"/>
-                            <path d="M 100 125 L 140 125 L 140 195 L 175 195" stroke="#475569" stroke-width="5" fill="none"/>
-                    
-                            <!-- PIPES TO 3-WAY INLET -->
-                            <path d="M 305 55 L 470 55 L 470 105" stroke="#475569" stroke-width="5" fill="none"/>
-                            <path d="M 305 195 L 470 195 L 470 145" stroke="#475569" stroke-width="5" fill="none"/>
-                    
-                            <!-- PIPE TO MASS SPEC -->
-                            <path d="M 492 125 L 590 125" stroke="#475569" stroke-width="6" fill="none" marker-end="url(#arrow)"/>
-                    
-                            <!-- WASTE MANIFOLD PIPES & PUMP -->
-                            <path d="M 400 54 L 430 54 L 430 240 L 530 240" stroke="#334155" stroke-width="4" fill="none"/>
-                            <path d="M 400 194 L 430 194" stroke="#334155" stroke-width="4" fill="none"/>
-                    
+
+                            <!-- 1. SAMPLE INLET LINE -->
+                            <path id="pipe_sample_in" class="pipe" d="M 50 150 L 130 150" stroke="var(--pipe-off)"/>
+
+                            <!-- 2. SAMPLE TO TRAP A -->
+                            <path id="pipe_sample_a" class="pipe" d="M 130 150 L 130 70 L 220 70" stroke="var(--pipe-off)"/>
+
+                            <!-- 3. SAMPLE TO TRAP B -->
+                            <path id="pipe_sample_b" class="pipe" d="M 130 150 L 130 230 L 220 230" stroke="var(--pipe-off)"/>
+
+                            <!-- 4. TRAP A TO WASTE -->
+                            <path id="pipe_trap_a_waste" class="pipe" d="M 330 70 L 410 70 L 410 150" stroke="var(--pipe-off)"/>
+
+                            <!-- 5. TRAP B TO WASTE -->
+                            <path id="pipe_trap_b_waste" class="pipe" d="M 330 230 L 410 230 L 410 150" stroke="var(--pipe-off)"/>
+
+                            <!-- 6. WASTE OUTLET LINE -->
+                            <path id="pipe_waste_out" class="pipe" d="M 410 150 L 490 150" stroke="var(--pipe-off)" marker-end="url(#arrow)"/>
+
+                            <!-- 7. TRAP A TO MS (OUTER LOOP) -->
+                            <path id="pipe_trap_a_ms" class="pipe" d="M 275 40 L 275 25 L 580 25 L 580 150" stroke="var(--pipe-off)"/>
+
+                            <!-- 8. TRAP B TO MS (OUTER LOOP) -->
+                            <path id="pipe_trap_b_ms" class="pipe" d="M 275 260 L 275 275 L 580 275 L 580 150" stroke="var(--pipe-off)"/>
+
+                            <!-- 9. MS OUTLET LINE -->
+                            <path id="pipe_ms_out" class="pipe" d="M 580 150 L 660 150" stroke="var(--pipe-off)" marker-end="url(#arrow)"/>
+
+
                             <!-- ========================================== -->
-                            <!-- LAYER 2: NODES & BOXES (Drawn Top)         -->
+                            <!-- HARDWARE NODES & VALVES                    -->
                             <!-- ========================================== -->
-                    
-                            <!-- INLET & CHANGE OVER VALVE -->
-                            <rect id="cov_rect" x="15" y="105" width="85" height="40" fill="#1e293b" stroke="#64748b" stroke-width="2"/>
-                            <text x="57" y="128" text-anchor="middle" font-size="10" font-weight="bold" fill="#f8fafc">COV (SAMPLE)</text>
-                            
-                            <!-- INTERACTIVE HTML BUTTON OVERLAY -->
-                            <foreignObject x="15" y="150" width="85" height="24">
-                                <button id="cov_btn" class="valve-btn valve-closed" onclick="toggleValve('cov')">CLOSED</button>
-                            </foreignObject>
-                    
-                            <!-- ENGINE A TRAP BOX -->
-                            <rect x="175" y="25" width="130" height="60" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
-                            <text x="240" y="46" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">ENGINE A TRAP</text>
-                            <text x="240" y="66" text-anchor="middle" font-size="10" font-weight="bold" fill="#38bdf8" id="svg_temp_a">---.-- °C</text>
-                    
-                            <!-- ENGINE B TRAP BOX -->
-                            <rect x="175" y="165" width="130" height="60" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
-                            <text x="240" y="186" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">ENGINE B TRAP</text>
-                            <text x="240" y="206" text-anchor="middle" font-size="10" font-weight="bold" fill="#38bdf8" id="svg_temp_b">---.-- °C</text>
-                    
-                            <!-- WASTE SOLENOID VALVES -->
-                            <rect id="svg_v_waste_a" x="335" y="38" width="65" height="32" fill="#334155" stroke="#475569" stroke-width="1"/>
-                            <text x="367" y="58" text-anchor="middle" font-size="9" font-weight="bold" fill="#cbd5e1">WASTE A</text>
-                    
-                            <rect id="svg_v_waste_b" x="335" y="178" width="65" height="32" fill="#334155" stroke="#475569" stroke-width="1"/>
-                            <text x="367" y="198" text-anchor="middle" font-size="9" font-weight="bold" fill="#cbd5e1">WASTE B</text>
-                    
-                            <!-- 3-WAY MS INLET VALVE -->
-                            <!-- Cannot remove radius on a circle, leaving as circle for diagrammatic standard -->
-                            <circle id="svg_3way" cx="470" cy="125" r="22" fill="#0369a1"/>
-                            <text x="470" y="129" text-anchor="middle" font-size="9" font-weight="bold" fill="#f8fafc">3-WAY</text>
-                    
-                            <!-- MASS SPEC NODE -->
-                            <rect x="590" y="95" width="130" height="60" fill="#020617" stroke="#334155" stroke-width="1"/>
-                            <text x="655" y="122" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">MASS SPEC</text>
-                            <text x="655" y="140" text-anchor="middle" font-size="9" fill="#38bdf8" id="svg_p115">115: --- Torr</text>
-                    
-                            <!-- WASTE TURBO PUMP NODE -->
-                            <rect id="svg_waste_turbo" x="530" y="220" width="100" height="40" fill="#1e293b" stroke="#334155" stroke-width="1"/>
-                            <text x="580" y="244" text-anchor="middle" font-size="9" font-weight="bold" fill="#94a3b8">WASTE TURBO</text>
+
+                            <!-- TRAP A BOX -->
+                            <rect x="220" y="40" width="110" height="60" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
+                            <text x="275" y="75" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">Trap A</text>
+
+                            <!-- TRAP B BOX -->
+                            <rect x="220" y="200" width="110" height="60" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
+                            <text x="275" y="235" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">Trap B</text>
+
+                            <!-- VALVES (BOWTIE SYMBOLS) -->
+                            <!-- Sample Inlet Valve -->
+                            <g transform="translate(130, 150)">
+                                <polygon points="-8,-12 8,12 8,-12 -8,12" fill="#334155" stroke="#94a3b8" stroke-width="1.5"/>
+                            </g>
+
+                            <!-- Waste Valve -->
+                            <g transform="translate(410, 150)">
+                                <polygon points="-8,-12 8,12 8,-12 -8,12" fill="#334155" stroke="#94a3b8" stroke-width="1.5"/>
+                            </g>
+
+                            <!-- MS Valve -->
+                            <g transform="translate(580, 150)">
+                                <polygon points="-12,-8 12,8 -12,8 12,-8" fill="#334155" stroke="#94a3b8" stroke-width="1.5"/>
+                            </g>
+
+                            <!-- LABELS -->
+                            <text x="50" y="135" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">sample gas</text>
+                            <text x="450" y="135" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">waste gas</text>
+                            <text x="680" y="154" text-anchor="start" font-size="11" font-weight="bold" fill="#f8fafc">MS</text>
                         </svg>
+                    </div>
+
+                    <!-- STATE SELECTOR BUTTONS -->
+                    <div class="flow-controls">
+                        <button id="btn_state_1" class="state-btn" onclick="setFlowState(1)">Sample → Trap A<br>Trap B → Waste</button>
+                        <button id="btn_state_2" class="state-btn" onclick="setFlowState(2)">Sample → Trap B<br>Trap A → Waste</button>
+                        <button id="btn_state_3" class="state-btn" onclick="setFlowState(3)">Sample → Trap A<br>No Waste</button>
+                        <button id="btn_state_4" class="state-btn" onclick="setFlowState(4)">Sample → Trap B<br>No Waste</button>
                     </div>
                 </div>
 
@@ -460,53 +470,141 @@
 
     <!-- JavaScript Telemetry & Plotting Stream -->
     <script>
-        // --- NEW: VALVE & MODE CONTROL LOGIC ---
-        let covState = false; // false = closed, true = open
         let isAutoMode = false;
-        
-        function toggleValve(valveName) {
-            if (valveName === 'cov') {
-                covState = !covState;
-                const btn = document.getElementById('cov_btn');
-                const rect = document.getElementById('cov_rect');
-                
-                if (covState) {
-                    btn.className = "valve-btn valve-open";
-                    btn.innerText = "OPEN";
-                    rect.setAttribute("stroke", "#059669"); // Green
-                    injectLocalLog("CMD", "Gas Selector Valve (COV) Opening...");
-                } else {
-                    btn.className = "valve-btn valve-closed";
-                    btn.innerText = "CLOSED";
-                    rect.setAttribute("stroke", "#64748b"); // Revert to muted
-                    injectLocalLog("CMD", "Gas Selector Valve (COV) Closing...");
-                }
+        let currentState = 1;
+        let ws = null;
+
+        const pipeOn = 'var(--pipe-on)';
+        const pipeOff = 'var(--pipe-off)';
+
+        function setFlowState(stateNum) {
+            currentState = stateNum;
+
+            // Highlight active button
+            for (let i = 1; i <= 4; i++) {
+                const btn = document.getElementById(`btn_state_${i}`);
+                if (btn) btn.classList.toggle('active', i === stateNum);
+            }
+
+            // Pipe references
+            const pSampleIn = document.getElementById('pipe_sample_in');
+            const pSampleA = document.getElementById('pipe_sample_a');
+            const pSampleB = document.getElementById('pipe_sample_b');
+            const pTrapAWaste = document.getElementById('pipe_trap_a_waste');
+            const pTrapBWaste = document.getElementById('pipe_trap_b_waste');
+            const pWasteOut = document.getElementById('pipe_waste_out');
+            
+            // MS lines (ignored / default off)
+            document.getElementById('pipe_trap_a_ms').setAttribute('stroke', pipeOff);
+            document.getElementById('pipe_trap_b_ms').setAttribute('stroke', pipeOff);
+            document.getElementById('pipe_ms_out').setAttribute('stroke', pipeOff);
+
+            let logDesc = "";
+
+            switch (stateNum) {
+                case 1:
+                    pSampleIn.setAttribute('stroke', pipeOn);
+                    pSampleA.setAttribute('stroke', pipeOn);
+                    pSampleB.setAttribute('stroke', pipeOff);
+                    pTrapAWaste.setAttribute('stroke', pipeOff);
+                    pTrapBWaste.setAttribute('stroke', pipeOn);
+                    pWasteOut.setAttribute('stroke', pipeOn);
+                    logDesc = "Sample gas flowing to trap A, trap B ejecting to waste...";
+                    break;
+
+                case 2:
+                    pSampleIn.setAttribute('stroke', pipeOn);
+                    pSampleA.setAttribute('stroke', pipeOff);
+                    pSampleB.setAttribute('stroke', pipeOn);
+                    pTrapAWaste.setAttribute('stroke', pipeOn);
+                    pTrapBWaste.setAttribute('stroke', pipeOff);
+                    pWasteOut.setAttribute('stroke', pipeOn);
+                    logDesc = "Sample gas flowing to trap B, trap A ejecting to waste...";
+                    break;
+
+                case 3:
+                    pSampleIn.setAttribute('stroke', pipeOn);
+                    pSampleA.setAttribute('stroke', pipeOn);
+                    pSampleB.setAttribute('stroke', pipeOff);
+                    pTrapAWaste.setAttribute('stroke', pipeOff);
+                    pTrapBWaste.setAttribute('stroke', pipeOff);
+                    pWasteOut.setAttribute('stroke', pipeOff);
+                    logDesc = "Sample gas flowing to trap A, waste isolated...";
+                    break;
+
+                case 4:
+                    pSampleIn.setAttribute('stroke', pipeOn);
+                    pSampleA.setAttribute('stroke', pipeOff);
+                    pSampleB.setAttribute('stroke', pipeOn);
+                    pTrapAWaste.setAttribute('stroke', pipeOff);
+                    pTrapBWaste.setAttribute('stroke', pipeOff);
+                    pWasteOut.setAttribute('stroke', pipeOff);
+                    logDesc = "Sample gas flowing to trap B, waste isolated...";
+                    break;
+            }
+
+            // 1. Inject to local event log display
+            injectLocalLog("CMD", logDesc);
+
+            // 2. Transmit pseudo command payload over WebSocket to backend state.py
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    command: "SET_FLOW_STATE",
+                    state: stateNum,
+                    description: logDesc
+                }));
             }
         }
 
         function triggerEstop() {
-            injectLocalLog("DANGER", "EMERGENCY SHUTDOWN INITIATED. ALL VALVES CLOSING.");
-            // Reset COV if open
-            if(covState) toggleValve('cov'); 
+            const logDesc = "EMERGENCY SHUTDOWN INITIATED. ALL FLOWS STOPPED.";
+            injectLocalLog("DANGER", logDesc);
+            
+            // Set all pipes to OFF
+            const pipes = document.querySelectorAll('.pipe');
+            pipes.forEach(p => p.setAttribute('stroke', pipeOff));
+
+            // Clear button selections
+            for (let i = 1; i <= 4; i++) {
+                const btn = document.getElementById(`btn_state_${i}`);
+                if (btn) btn.classList.remove('active');
+            }
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    command: "ESTOP",
+                    description: logDesc
+                }));
+            }
         }
 
         function toggleMode() {
             isAutoMode = !isAutoMode;
             const btn = document.getElementById('btn_mode');
             const status = document.getElementById('mode_status');
+            let logDesc = "";
             
             if (isAutoMode) {
                 btn.innerText = "SWITCH TO MANUAL MODE";
                 status.innerText = "CURRENT: AUTOMATIC ACQUISITION";
-                injectLocalLog("CMD", "System mode changed to AUTOMATIC");
+                logDesc = "System mode changed to AUTOMATIC";
             } else {
                 btn.innerText = "SWITCH TO AUTO MODE";
                 status.innerText = "CURRENT: MANUAL OVERRIDE";
-                injectLocalLog("CMD", "System mode changed to MANUAL");
+                logDesc = "System mode changed to MANUAL";
+            }
+
+            injectLocalLog("CMD", logDesc);
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    command: "SET_MODE",
+                    auto_mode: isAutoMode,
+                    description: logDesc
+                }));
             }
         }
 
-        // Helper to push a UI log immediately without waiting for backend
         function injectLocalLog(level, msg) {
             const box = document.getElementById("logBox");
             const entry = document.createElement("div");
@@ -588,8 +686,11 @@
             box.scrollTop = box.scrollHeight;
         }
 
+        // Initialize state 1 by default
+        setFlowState(1);
+
         // WEBSOCKET TELEMETRY CONNECTION
-        const ws = new WebSocket(`ws://${location.host}/ws/telemetry`);
+        ws = new WebSocket(`ws://${location.host}/ws/telemetry`);
         ws.onmessage = function(event) {
             const data = JSON.parse(event.data);
 
@@ -610,11 +711,6 @@
             document.getElementById("ch119_v").innerText = data.ch119_v;
             document.getElementById("ch113").innerText = data.ch113;
             document.getElementById("ch112").innerText = data.ch112;
-
-            // Bind Live Readouts Directly Into SVG Plumbing Diagram Nodes
-            document.getElementById("svg_temp_a").innerText = data.ch103;
-            document.getElementById("svg_temp_b").innerText = data.ch102;
-            document.getElementById("svg_p115").innerText = "115: " + data.ch115_p;
 
             // Chart Data Streaming
             const now = new Date().toLocaleTimeString();
