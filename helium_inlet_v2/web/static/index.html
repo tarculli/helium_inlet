@@ -104,10 +104,40 @@
             letter-spacing: 0.05em;
         }
 
+        /* VERTICAL LOG STYLING */
+        .log-box-vertical {
+            background-color: var(--bg);
+            border: 1px solid var(--border);
+            padding: 12px;
+            flex: 1;
+            min-height: 500px;
+            overflow-y: auto;
+            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+            font-size: 0.8rem;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        /* HORIZONTAL READOUTS PANEL */
+        .readout-card {
+            background-color: var(--panel-bg);
+            padding: 16px 20px;
+        }
+        .readouts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-top: 10px;
+        }
+
         .location-section {
             background: var(--card-bg);
             border: 1px solid var(--border);
             padding: 10px 14px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
         .location-header {
             font-size: 0.75rem;
@@ -139,7 +169,7 @@
             background: var(--border-dark);
         }
 
-        .diagram-card, .chart-card, .log-card {
+        .diagram-card, .chart-card {
             background-color: var(--panel-bg);
             padding: 16px 20px;
         }
@@ -188,19 +218,6 @@
         }
         .chart-container { position: relative; height: 210px; width: 100%; margin-top: 10px; }
 
-        .log-box {
-            background-color: var(--bg);
-            border: 1px solid var(--border);
-            padding: 12px;
-            height: 140px;
-            overflow-y: auto;
-            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-            font-size: 0.8rem;
-            margin-top: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
         .log-entry { display: flex; gap: 10px; align-items: baseline; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
         .log-time { color: var(--subtext); font-weight: 600; }
         .log-tag { font-size: 0.68rem; padding: 2px 6px; font-weight: 800; text-transform: uppercase; }
@@ -213,9 +230,9 @@
 
         .ctrl-btn {
             width: 100%;
-            padding: 10px;
-            margin-top: 8px;
-            font-size: 0.75rem;
+            padding: 8px;
+            margin-top: 6px;
+            font-size: 0.72rem;
             letter-spacing: 0.05em;
             border: none;
             font-weight: 800;
@@ -249,95 +266,16 @@
         <!-- Main Layout Grid -->
         <div class="layout">
             
-            <!-- LEFT PANEL: Readouts -->
+            <!-- LEFT PANEL: Vertical System Log -->
             <div class="panel">
-                <h2 class="panel-title">System Readouts</h2>
-
-                <!-- SYSTEM CONTROLS -->
-                <div class="location-section" style="border-color: #ef4444;">
-                    <div class="location-header" style="color: #ef4444;">System Controls</div>
-                    <button id="btn_estop" class="ctrl-btn btn-danger" onclick="triggerEstop()">EMERGENCY SHUTDOWN</button>
-                    <button id="btn_mode" class="ctrl-btn btn-warning" onclick="toggleMode()">SWITCH TO AUTO MODE</button>
-                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 8px; text-align: center; font-weight: 600;" id="mode_status">CURRENT: MANUAL OVERRIDE</div>
-                </div>
-
-                <!-- ENGINE A -->
-                <div class="location-section">
-                    <div class="location-header">Engine A</div>
-                    <div class="sensor-row">
-                        <span class="sensor-label">HR Temp <span style="font-size: 0.72rem; color: var(--subtext)">(104)</span></span>
-                        <div class="sensor-readout"><div class="primary-val" id="ch104">---.-- °C</div></div>
-                    </div>
-                    <div class="sensor-row">
-                        <span class="sensor-label">PV Temp <span style="font-size: 0.72rem; color: var(--subtext)">(103)</span></span>
-                        <div class="sensor-readout"><div class="primary-val" id="ch103">---.-- °C</div></div>
+                <h2 class="panel-title">System & Event Log</h2>
+                <div class="log-box-vertical" id="logBox">
+                    <div class="log-entry">
+                        <span class="log-time">--:--:--</span>
+                        <span class="log-tag tag-info">INFO</span>
+                        <span class="log-msg">Awaiting system events...</span>
                     </div>
                 </div>
-
-                <!-- ENGINE B -->
-                <div class="location-section">
-                    <div class="location-header">Engine B</div>
-                    <div class="sensor-row">
-                        <span class="sensor-label">HR Temp <span style="font-size: 0.72rem; color: var(--subtext)">(101)</span></span>
-                        <div class="sensor-readout"><div class="primary-val" id="ch101">---.-- °C</div></div>
-                    </div>
-                    <div class="sensor-row">
-                        <span class="sensor-label">PV Temp <span style="font-size: 0.72rem; color: var(--subtext)">(102)</span></span>
-                        <div class="sensor-readout"><div class="primary-val" id="ch102">---.-- °C</div></div>
-                    </div>
-                </div>
-
-                <!-- CHAMBER -->
-                <div class="location-section">
-                    <div class="location-header">Chamber</div>
-                    <div class="sensor-row">
-                        <span class="sensor-label">Penning Gauge <span style="font-size: 0.72rem; color: var(--subtext)">(115)</span></span>
-                        <div class="sensor-readout">
-                            <div class="primary-val" id="ch115_p">---.--- Torr</div>
-                            <div class="subtext-val" id="ch115_v">---.-- V</div>
-                        </div>
-                    </div>
-                    <div class="sensor-row">
-                        <span class="sensor-label">Chamber Turbo <span style="font-size: 0.72rem; color: var(--subtext)">(113)</span></span>
-                        <div class="sensor-readout"><div class="primary-val" id="ch113">---.-- V</div></div>
-                    </div>
-                </div>
-
-                <!-- TRAP -->
-                <div class="location-section">
-                    <div class="location-header">Trap</div>
-                    <div class="sensor-row">
-                        <span class="sensor-label">Penning Gauge <span style="font-size: 0.72rem; color: var(--subtext)">(116)</span></span>
-                        <div class="sensor-readout">
-                            <div class="primary-val" id="ch116_p">---.--- Torr</div>
-                            <div class="subtext-val" id="ch116_v">---.-- V</div>
-                        </div>
-                    </div>
-                    <div class="sensor-row">
-                        <span class="sensor-label">Trap Turbo <span style="font-size: 0.72rem; color: var(--subtext)">(112)</span></span>
-                        <div class="sensor-readout"><div class="primary-val" id="ch112">---.-- V</div></div>
-                    </div>
-                </div>
-
-                <!-- CONVECTRONS -->
-                <div class="location-section">
-                    <div class="location-header">Convectrons</div>
-                    <div class="sensor-row">
-                        <span class="sensor-label">HiVac Gauge <span style="font-size: 0.72rem; color: var(--subtext)">(118)</span></span>
-                        <div class="sensor-readout">
-                            <div class="primary-val disabled-text" id="ch118_p">N/A</div>
-                            <div class="subtext-val disabled-text" id="ch118_v">N/A</div>
-                        </div>
-                    </div>
-                    <div class="sensor-row">
-                        <span class="sensor-label">Trap LoVac Gauge <span style="font-size: 0.72rem; color: var(--subtext)">(119)</span></span>
-                        <div class="sensor-readout">
-                            <div class="primary-val" id="ch119_p">---.--- Torr</div>
-                            <div class="subtext-val" id="ch119_v">---.-- V</div>
-                        </div>
-                    </div>
-                </div>
-
             </div>
 
             <!-- RIGHT COLUMN -->
@@ -354,70 +292,36 @@
                                 </marker>
                             </defs>
 
-                            <!-- ========================================== -->
-                            <!-- PIPES & FLOW LINES                         -->
-                            <!-- ========================================== -->
-
-                            <!-- 1. SAMPLE INLET LINE -->
-                            <path id="pipe_sample_in" class="pipe" d="M 50 150 L 130 150" stroke="var(--pipe-off)"/>
-
-                            <!-- 2. SAMPLE TO TRAP A -->
+                            <!-- PIPES & FLOW LINES -->
+                            <path id="pipe_sample_in" class="pipe" d="M 100 150 L 130 150" stroke="var(--pipe-off)"/>
                             <path id="pipe_sample_a" class="pipe" d="M 130 150 L 130 70 L 220 70" stroke="var(--pipe-off)"/>
-
-                            <!-- 3. SAMPLE TO TRAP B -->
                             <path id="pipe_sample_b" class="pipe" d="M 130 150 L 130 230 L 220 230" stroke="var(--pipe-off)"/>
-
-                            <!-- 4. TRAP A TO WASTE -->
                             <path id="pipe_trap_a_waste" class="pipe" d="M 330 70 L 410 70 L 410 150" stroke="var(--pipe-off)"/>
-
-                            <!-- 5. TRAP B TO WASTE -->
                             <path id="pipe_trap_b_waste" class="pipe" d="M 330 230 L 410 230 L 410 150" stroke="var(--pipe-off)"/>
-
-                            <!-- 6. WASTE OUTLET LINE -->
-                            <path id="pipe_waste_out" class="pipe" d="M 410 150 L 490 150" stroke="var(--pipe-off)" marker-end="url(#arrow)"/>
-
-                            <!-- 7. TRAP A TO MS (OUTER LOOP) -->
+                            <path id="pipe_waste_out" class="pipe" d="M 410 150 L 450 150" stroke="var(--pipe-off)" marker-end="url(#arrow)"/>
                             <path id="pipe_trap_a_ms" class="pipe" d="M 275 40 L 275 25 L 580 25 L 580 150" stroke="var(--pipe-off)"/>
-
-                            <!-- 8. TRAP B TO MS (OUTER LOOP) -->
                             <path id="pipe_trap_b_ms" class="pipe" d="M 275 260 L 275 275 L 580 275 L 580 150" stroke="var(--pipe-off)"/>
+                            <path id="pipe_ms_out" class="pipe" d="M 580 150 L 650 150" stroke="var(--pipe-off)" marker-end="url(#arrow)"/>
 
-                            <!-- 9. MS OUTLET LINE -->
-                            <path id="pipe_ms_out" class="pipe" d="M 580 150 L 660 150" stroke="var(--pipe-off)" marker-end="url(#arrow)"/>
-
-
-                            <!-- ========================================== -->
-                            <!-- HARDWARE NODES & VALVES                    -->
-                            <!-- ========================================== -->
-
-                            <!-- TRAP A BOX -->
+                            <!-- HARDWARE NODES & TRAPS -->
                             <rect x="220" y="40" width="110" height="60" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
                             <text x="275" y="75" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">Trap A</text>
 
-                            <!-- TRAP B BOX -->
                             <rect x="220" y="200" width="110" height="60" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
                             <text x="275" y="235" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">Trap B</text>
 
-                            <!-- VALVES (BOWTIE SYMBOLS) -->
-                            <!-- Sample Inlet Valve -->
-                            <g transform="translate(130, 150)">
-                                <polygon points="-8,-12 8,12 8,-12 -8,12" fill="#334155" stroke="#94a3b8" stroke-width="1.5"/>
-                            </g>
+                            <!-- BOXED LABELS (NO VALVE ICONS) -->
+                            <!-- Sample Gas Box -->
+                            <rect x="10" y="130" width="90" height="40" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
+                            <text x="55" y="154" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">SAMPLE GAS</text>
 
-                            <!-- Waste Valve -->
-                            <g transform="translate(410, 150)">
-                                <polygon points="-8,-12 8,12 8,-12 -8,12" fill="#334155" stroke="#94a3b8" stroke-width="1.5"/>
-                            </g>
+                            <!-- Waste Gas Box -->
+                            <rect x="450" y="130" width="85" height="40" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
+                            <text x="492" y="154" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">WASTE</text>
 
-                            <!-- MS Valve -->
-                            <g transform="translate(580, 150)">
-                                <polygon points="-12,-8 12,8 -12,8 12,-8" fill="#334155" stroke="#94a3b8" stroke-width="1.5"/>
-                            </g>
-
-                            <!-- LABELS -->
-                            <text x="50" y="135" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">sample gas</text>
-                            <text x="450" y="135" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">waste gas</text>
-                            <text x="680" y="154" text-anchor="start" font-size="11" font-weight="bold" fill="#f8fafc">MS</text>
+                            <!-- MS Box -->
+                            <rect x="650" y="130" width="60" height="40" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
+                            <text x="680" y="154" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">MS</text>
                         </svg>
                     </div>
 
@@ -432,8 +336,6 @@
 
                 <!-- SIDE-BY-SIDE PLOTS -->
                 <div class="charts-grid">
-                    
-                    <!-- LIVE PRESSURE PLOT -->
                     <div class="chart-card">
                         <h2 class="panel-title">Live Pressures (Torr)</h2>
                         <div class="chart-container">
@@ -441,25 +343,103 @@
                         </div>
                     </div>
 
-                    <!-- LIVE TEMPERATURE PLOT -->
                     <div class="chart-card">
                         <h2 class="panel-title">Live Temperatures (°C)</h2>
                         <div class="chart-container">
                             <canvas id="tempChart"></canvas>
                         </div>
                     </div>
-
                 </div>
 
-                <!-- SYSTEM LOGS PANEL -->
-                <div class="log-card">
-                    <h2 class="panel-title">System & Event Log</h2>
-                    <div class="log-box" id="logBox">
-                        <div class="log-entry">
-                            <span class="log-time">--:--:--</span>
-                            <span class="log-tag tag-info">INFO</span>
-                            <span class="log-msg">Awaiting system events...</span>
+                <!-- HORIZONTAL SYSTEM READOUTS PANEL -->
+                <div class="readout-card">
+                    <h2 class="panel-title">System Readouts & Telemetry</h2>
+                    <div class="readouts-grid">
+                        
+                        <!-- SYSTEM CONTROLS -->
+                        <div class="location-section" style="border-color: #ef4444;">
+                            <div class="location-header" style="color: #ef4444;">System Controls</div>
+                            <button id="btn_estop" class="ctrl-btn btn-danger" onclick="triggerEstop()">EMERGENCY SHUTDOWN</button>
+                            <button id="btn_mode" class="ctrl-btn btn-warning" onclick="toggleMode()">SWITCH TO AUTO MODE</button>
+                            <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 6px; text-align: center; font-weight: 600;" id="mode_status">MANUAL OVERRIDE</div>
                         </div>
+
+                        <!-- ENGINE A -->
+                        <div class="location-section">
+                            <div class="location-header">Engine A</div>
+                            <div class="sensor-row">
+                                <span class="sensor-label">HR Temp <span style="font-size: 0.72rem; color: var(--subtext)">(104)</span></span>
+                                <div class="sensor-readout"><div class="primary-val" id="ch104">---.-- °C</div></div>
+                            </div>
+                            <div class="sensor-row">
+                                <span class="sensor-label">PV Temp <span style="font-size: 0.72rem; color: var(--subtext)">(103)</span></span>
+                                <div class="sensor-readout"><div class="primary-val" id="ch103">---.-- °C</div></div>
+                            </div>
+                        </div>
+
+                        <!-- ENGINE B -->
+                        <div class="location-section">
+                            <div class="location-header">Engine B</div>
+                            <div class="sensor-row">
+                                <span class="sensor-label">HR Temp <span style="font-size: 0.72rem; color: var(--subtext)">(101)</span></span>
+                                <div class="sensor-readout"><div class="primary-val" id="ch101">---.-- °C</div></div>
+                            </div>
+                            <div class="sensor-row">
+                                <span class="sensor-label">PV Temp <span style="font-size: 0.72rem; color: var(--subtext)">(102)</span></span>
+                                <div class="sensor-readout"><div class="primary-val" id="ch102">---.-- °C</div></div>
+                            </div>
+                        </div>
+
+                        <!-- CHAMBER -->
+                        <div class="location-section">
+                            <div class="location-header">Chamber</div>
+                            <div class="sensor-row">
+                                <span class="sensor-label">Penning <span style="font-size: 0.72rem; color: var(--subtext)">(115)</span></span>
+                                <div class="sensor-readout">
+                                    <div class="primary-val" id="ch115_p">---.--- Torr</div>
+                                    <div class="subtext-val" id="ch115_v">---.-- V</div>
+                                </div>
+                            </div>
+                            <div class="sensor-row">
+                                <span class="sensor-label">Turbo <span style="font-size: 0.72rem; color: var(--subtext)">(113)</span></span>
+                                <div class="sensor-readout"><div class="primary-val" id="ch113">---.-- V</div></div>
+                            </div>
+                        </div>
+
+                        <!-- TRAP -->
+                        <div class="location-section">
+                            <div class="location-header">Trap</div>
+                            <div class="sensor-row">
+                                <span class="sensor-label">Penning <span style="font-size: 0.72rem; color: var(--subtext)">(116)</span></span>
+                                <div class="sensor-readout">
+                                    <div class="primary-val" id="ch116_p">---.--- Torr</div>
+                                    <div class="subtext-val" id="ch116_v">---.-- V</div>
+                                </div>
+                            </div>
+                            <div class="sensor-row">
+                                <span class="sensor-label">Turbo <span style="font-size: 0.72rem; color: var(--subtext)">(112)</span></span>
+                                <div class="sensor-readout"><div class="primary-val" id="ch112">---.-- V</div></div>
+                            </div>
+                        </div>
+
+                        <!-- CONVECTRONS -->
+                        <div class="location-section">
+                            <div class="location-header">Convectrons</div>
+                            <div class="sensor-row">
+                                <span class="sensor-label">HiVac <span style="font-size: 0.72rem; color: var(--subtext)">(118)</span></span>
+                                <div class="sensor-readout">
+                                    <div class="primary-val disabled-text" id="ch118_p">N/A</div>
+                                </div>
+                            </div>
+                            <div class="sensor-row">
+                                <span class="sensor-label">LoVac <span style="font-size: 0.72rem; color: var(--subtext)">(119)</span></span>
+                                <div class="sensor-readout">
+                                    <div class="primary-val" id="ch119_p">---.--- Torr</div>
+                                    <div class="subtext-val" id="ch119_v">---.-- V</div>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
@@ -543,10 +523,8 @@
                     break;
             }
 
-            // 1. Inject to local event log display
             injectLocalLog("CMD", logDesc);
 
-            // 2. Transmit pseudo command payload over WebSocket to backend state.py
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({
                     command: "SET_FLOW_STATE",
@@ -560,11 +538,9 @@
             const logDesc = "EMERGENCY SHUTDOWN INITIATED. ALL FLOWS STOPPED.";
             injectLocalLog("DANGER", logDesc);
             
-            // Set all pipes to OFF
             const pipes = document.querySelectorAll('.pipe');
             pipes.forEach(p => p.setAttribute('stroke', pipeOff));
 
-            // Clear button selections
             for (let i = 1; i <= 4; i++) {
                 const btn = document.getElementById(`btn_state_${i}`);
                 if (btn) btn.classList.remove('active');
@@ -686,7 +662,7 @@
             box.scrollTop = box.scrollHeight;
         }
 
-        // Initialize state 1 by default
+        // Initialize default state
         setFlowState(1);
 
         // WEBSOCKET TELEMETRY CONNECTION
@@ -694,47 +670,27 @@
         ws.onmessage = function(event) {
             const data = JSON.parse(event.data);
 
-            // Update Panel Cards
-            document.getElementById("status").innerText = data.status;
-            document.getElementById("device").innerText = data.device;
-            document.getElementById("timestamp").innerText = data.timestamp;
+            if(data.status) document.getElementById("status").innerText = data.status;
+            if(data.device) document.getElementById("device").innerText = data.device;
+            if(data.timestamp) document.getElementById("timestamp").innerText = data.timestamp;
 
-            document.getElementById("ch101").innerText = data.ch101;
-            document.getElementById("ch102").innerText = data.ch102;
-            document.getElementById("ch103").innerText = data.ch103;
-            document.getElementById("ch104").innerText = data.ch104;
-            document.getElementById("ch115_p").innerText = data.ch115_p;
-            document.getElementById("ch115_v").innerText = data.ch115_v;
-            document.getElementById("ch116_p").innerText = data.ch116_p;
-            document.getElementById("ch116_v").innerText = data.ch116_v;
-            document.getElementById("ch119_p").innerText = data.ch119_p;
-            document.getElementById("ch119_v").innerText = data.ch119_v;
-            document.getElementById("ch113").innerText = data.ch113;
-            document.getElementById("ch112").innerText = data.ch112;
+            if(data.ch101) document.getElementById("ch101").innerText = data.ch101;
+            if(data.ch102) document.getElementById("ch102").innerText = data.ch102;
+            if(data.ch103) document.getElementById("ch103").innerText = data.ch103;
+            if(data.ch104) document.getElementById("ch104").innerText = data.ch104;
+            
+            if(data.ch115_p) document.getElementById("ch115_p").innerText = data.ch115_p;
+            if(data.ch115_v) document.getElementById("ch115_v").innerText = data.ch115_v;
+            if(data.ch116_p) document.getElementById("ch116_p").innerText = data.ch116_p;
+            if(data.ch116_v) document.getElementById("ch116_v").innerText = data.ch116_v;
+            if(data.ch113) document.getElementById("ch113").innerText = data.ch113;
+            if(data.ch112) document.getElementById("ch112").innerText = data.ch112;
+            if(data.ch118_p) document.getElementById("ch118_p").innerText = data.ch118_p;
+            if(data.ch118_v) document.getElementById("ch118_v").innerText = data.ch118_v;
+            if(data.ch119_p) document.getElementById("ch119_p").innerText = data.ch119_p;
+            if(data.ch119_v) document.getElementById("ch119_v").innerText = data.ch119_v;
 
-            // Chart Data Streaming
-            const now = new Date().toLocaleTimeString();
-            if (pressureChart.data.labels.length > 60) {
-                pressureChart.data.labels.shift();
-                pressureChart.data.datasets.forEach(d => d.data.shift());
-                tempChart.data.labels.shift();
-                tempChart.data.datasets.forEach(d => d.data.shift());
-            }
-
-            pressureChart.data.labels.push(now);
-            pressureChart.data.datasets[0].data.push(data.ch115_p_val);
-            pressureChart.data.datasets[1].data.push(data.ch116_p_val);
-            pressureChart.data.datasets[2].data.push(data.ch119_p_val);
-            pressureChart.update();
-
-            tempChart.data.labels.push(now);
-            tempChart.data.datasets[0].data.push(data.ch101_val);
-            tempChart.data.datasets[1].data.push(data.ch102_val);
-            tempChart.data.datasets[2].data.push(data.ch103_val);
-            tempChart.data.datasets[3].data.push(data.ch104_val);
-            tempChart.update();
-
-            renderLogs(data.logs);
+            if(data.logs) renderLogs(data.logs);
         };
     </script>
 </body>

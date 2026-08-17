@@ -5,12 +5,12 @@ and interfaces with the web API to ensure safe, coordinated system operation.
 '''
 
 import time
-from queue import Queue
+from queue import Queue, Empty
 
-# Setting the maximum log entries based on the parameter noted by the config.py file in /helium_inlet_v2/
-from config import MAX_LOG_ENTRIES
+# Setting parameters and configurations from config.py
+from config import MAX_LOG_ENTRIES, STATE_VALVE_MAP
 
-# Thread-safe queue for hardware commands (e.g., {"device": "agilent", "cmd": "OPEN_VALVE_A"})
+# Thread-safe queue for hardware commands (e.g., {"device": "agilent", "cmd": "SET_FLOW_STATE", "state": 2})
 command_queue = Queue()
 
 # List to store important system information, events
@@ -31,6 +31,9 @@ telemetry_data = {
     "mode": "READ-ONLY MONITORING",
     
     "control": {
+        "flow_state": 1,
+        "target_flow_state": 1,
+        "is_busy": False,
         "v_waste_a": False,
         "v_waste_b": False,
         "v_ms_inlet": "A",
@@ -52,3 +55,60 @@ telemetry_data = {
     "ch118_p": "N/A", "ch118_p_val": None, "ch118_v": "N/A",
     "ch119_p": "---.--- Torr", "ch119_p_val": None, "ch119_v": "---.-- V",
 }
+
+def enqueue_command(cmd_dict: dict):
+    """Pushes an incoming command from API/UI buttons into the queue."""
+    command_queue.put(cmd_dict)
+    log_event(f"Command queued: {cmd_dict.get('cmd', 'UNKNOWN')}")
+
+def process_command_queue(agilent_inst):
+    """
+    Pulls staged commands from queue and executes them via the Agilent instance.
+    Call this function inside your main hardware communication loop.
+    """
+    if command_queue.empty():
+        return
+
+    try:
+        cmd_data = command_queue.get_nowait()
+        telemetry_data["control"]["is_busy"] = True
+
+        cmd_type = cmd_data.get("cmd")
+
+        if cmd_type == "SET_FLOW_STATE":
+            new_state = cmd_data.get("state")
+            if new_state in STATE_VALVE_MAP:
+                telemetry_data["control"]["target_flow_state"] = new_state
+                log_event(f"Staging transition to Flow State {new_state}...")
+                
+                success = agilent_inst.set_flow_state(new_state)
+                if success:
+                    telemetry_data["control"]["flow_state"] = new_state
+                    log_event(f"Successfully transition to Flow State {new_state}")
+                else:
+                    log_event(f"Failed to apply Flow State {new_state} on Agilent hardware", level="ERROR")
+            else:
+                log_event(f"Invalid flow state requested: {new_state}", level="WARNING")
+
+        elif cmd_type == "ESTOP":
+            log_event("ESTOP: Depressurizing all Clippard valves!", level="WARNING")
+            success = agilent_inst.emergency_stop()
+            if success:
+                telemetry_data["control"]["flow_state"] = None
+                log_event("ESTOP complete: All valves depressurized.", level="WARNING")
+            else:
+                log_event("ESTOP command failed on Agilent hardware!", level="ERROR")
+
+        elif cmd_type == "SET_MODE":
+            new_mode = cmd_data.get("mode", "READ-ONLY MONITORING")
+            telemetry_data["mode"] = new_mode
+            log_event(f"System control mode updated to: {new_mode}")
+
+        command_queue.task_done()
+
+    except Empty:
+        pass
+    except Exception as e:
+        log_event(f"Error processing command from queue: {e}", level="ERROR")
+    finally:
+        telemetry_data["control"]["is_busy"] = False

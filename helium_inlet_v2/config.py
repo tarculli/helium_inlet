@@ -9,6 +9,22 @@ AGILENT_BAUD = 57600
 TC_CHANNELS = "101,102,103,104"
 VOLT_CHANNELS = "112,113,115,116,118,119"
 
+# Clippard Valve Card & Flow State Configurations (Slot 2: Channels 201–220)
+VALVE_SLOT_PREFIX = 200
+VALVE_CHANNELS = {
+    "V1": 8,  # EV5 (Peach/Orange) -> 208
+    "V2": 9,  # EV6 (Yellow)       -> 209
+    "V3": 6,  # EV3 (Red)          -> 206
+    "V4": 7,  # EV4 (Green)        -> 207
+}
+
+STATE_VALVE_MAP = {
+    1: ["V1", "V4"],        # Sample -> Trap A | Trap B -> Waste (208, 207 CLOSED)
+    2: ["V2", "V3"],        # Sample -> Trap B | Trap A -> Waste (209, 206 CLOSED)
+    3: ["V1", "V3", "V4"],  # Sample -> Trap A | No Waste       (208, 206, 207 CLOSED)
+    4: ["V1", "V2", "V3"],  # Sample -> Trap B | No Waste       (208, 209, 206 CLOSED)
+}
+
 # Timings
 IO_POLL_RATE_SEC = 1.0
 WATCHDOG_RATE_SEC = 0.5

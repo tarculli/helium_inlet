@@ -5,7 +5,16 @@ including specific pressure conversion matrices for the instrument's vacuum gaug
 
 import serial
 import math
-from config import AGILENT_PORT, AGILENT_BAUD, TC_CHANNELS, VOLT_CHANNELS
+from config import (
+    AGILENT_PORT,
+    AGILENT_BAUD,
+    TC_CHANNELS,
+    VOLT_CHANNELS,
+    VALVE_SLOT_PREFIX,
+    VALVE_CHANNELS,
+    STATE_VALVE_MAP,
+)
+
 
 class Agilent34970A:
     def __init__(self):
@@ -15,9 +24,12 @@ class Agilent34970A:
     def connect(self):
         try:
             self.device = serial.Serial(
-                port=AGILENT_PORT, baudrate=AGILENT_BAUD, 
-                bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE, 
-                stopbits=serial.STOPBITS_ONE, timeout=2.0
+                port=AGILENT_PORT,
+                baudrate=AGILENT_BAUD,
+                bytesize=serial.EIGHTBITS,
+                parity=serial.PARITY_NONE,
+                stopbits=serial.STOPBITS_ONE,
+                timeout=2.0,
             )
             self.device.reset_input_buffer()
             self.device.reset_output_buffer()
@@ -33,14 +45,18 @@ class Agilent34970A:
     def read_all(self):
         if not self.connected:
             return None, None
-        
+
         try:
-            self.device.write(f"MEASure:TEMPerature? TC,T,DEF,(@{TC_CHANNELS})\r\n".encode("utf-8"))
+            self.device.write(
+                f"MEASure:TEMPerature? TC,T,DEF,(@{TC_CHANNELS})\r\n".encode("utf-8")
+            )
             raw_tc = self.device.readline().decode("utf-8", errors="ignore").strip()
-            
-            self.device.write(f"MEASure:VOLTage:DC? AUTO,DEF,(@{VOLT_CHANNELS})\r\n".encode("utf-8"))
+
+            self.device.write(
+                f"MEASure:VOLTage:DC? AUTO,DEF,(@{VOLT_CHANNELS})\r\n".encode("utf-8")
+            )
             raw_volt = self.device.readline().decode("utf-8", errors="ignore").strip()
-            
+
             tc_vals = [float(x) if x else None for x in raw_tc.split(",")]
             v_vals = [float(x) if x else None for x in raw_volt.split(",")]
             return tc_vals, v_vals
@@ -48,11 +64,68 @@ class Agilent34970A:
             self.connected = False
             return None, None
 
+    # --- CLIPPARD VALVE CONTROL METHODS ---
+
+    def set_flow_state(self, state_num: int) -> bool:
+        """
+        Pressurizes required valves and depressurizes remaining channels using config parameters.
+        Closing a relay energizes the valve solenoid (pressurizes valve).
+        """
+        if not self.connected or not self.device:
+            return False
+
+        if state_num not in STATE_VALVE_MAP:
+            raise ValueError(f"Invalid state requested: {state_num}")
+
+        active_valves = STATE_VALVE_MAP[state_num]
+
+        # Calculate exact 200-series channel IDs
+        all_channels = {
+            v: VALVE_SLOT_PREFIX + ch for v, ch in VALVE_CHANNELS.items()
+        }
+
+        close_list = [all_channels[v] for v in active_valves]
+        open_list = [
+            ch for ch in all_channels.values() if ch not in close_list
+        ]
+
+        try:
+            # Depressurize inactive valves first to prevent temporary misconfigurations
+            if open_list:
+                open_str = ",".join(str(ch) for ch in open_list)
+                self.device.write(f"ROUTe:OPEn (@{open_str})\r\n".encode("utf-8"))
+
+            # Pressurize active valves
+            if close_list:
+                close_str = ",".join(str(ch) for ch in close_list)
+                self.device.write(f"ROUTe:CLOSe (@{close_str})\r\n".encode("utf-8"))
+
+            return True
+        except Exception:
+            self.connected = False
+            return False
+
+    def emergency_stop(self) -> bool:
+        """Depressurizes all Clippard valves using configured slot channels."""
+        if not self.connected or not self.device:
+            return False
+
+        all_channels = [
+            VALVE_SLOT_PREFIX + ch for ch in VALVE_CHANNELS.values()
+        ]
+        ch_str = ",".join(str(ch) for ch in all_channels)
+        try:
+            self.device.write(f"ROUTe:OPEn (@{ch_str})\r\n".encode("utf-8"))
+            return True
+        except Exception:
+            self.connected = False
+            return False
+
     # --- DATA FORMATTING & CONVERSION METHODS ---
 
     @staticmethod
     def format_temp(val):
-        if val is None: 
+        if val is None:
             return "---.-- °C"
         if val > 9e9:
             return "OPEN / NC"
@@ -60,7 +133,7 @@ class Agilent34970A:
 
     @staticmethod
     def format_voltage(volts):
-        if volts is None: 
+        if volts is None:
             return "---.-- V"
         return f"{volts:.2f} V"
 
@@ -95,12 +168,12 @@ class Agilent34970A:
         # Logarithmic interpolation between points
         for i in range(len(aim_sl_table_torr) - 1):
             v1, p1 = aim_sl_table_torr[i]
-            v2, p2 = aim_sl_table_torr[i+1]
+            v2, p2 = aim_sl_table_torr[i + 1]
             if v1 < volts < v2:
                 log_p1 = math.log10(p1)
                 log_p2 = math.log10(p2)
                 log_p = log_p1 + (volts - v1) * ((log_p2 - log_p1) / (v2 - v1))
-                pressure = 10 ** log_p
+                pressure = 10**log_p
                 return pressure, f"{pressure:.2e} Torr"
 
         return None, "Error"
