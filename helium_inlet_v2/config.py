@@ -19,10 +19,11 @@ VALVE_CHANNELS = {
 }
 
 STATE_VALVE_MAP = {
-    1: ["V1", "V4"],        # Sample -> Trap A | Trap B -> Waste (208, 207 CLOSED)
-    2: ["V2", "V3"],        # Sample -> Trap B | Trap A -> Waste (209, 206 CLOSED)
-    3: ["V1", "V3", "V4"],  # Sample -> Trap A | No Waste       (208, 206, 207 CLOSED)
-    4: ["V1", "V2", "V3"],  # Sample -> Trap B | No Waste       (208, 209, 206 CLOSED)
+    0: [],                  # State 0: All Valves Depressurized / Isolated (Startup Default)
+    1: ["V1", "V4"],        # Sample -> Trap A | Trap B -> Waste
+    2: ["V2", "V3"],        # Sample -> Trap B | Trap A -> Waste
+    3: ["V1", "V3", "V4"],  # Sample -> Trap A | No Waste
+    4: ["V1", "V2", "V3"],  # Sample -> Trap B | No Waste
 }
 
 # Timings

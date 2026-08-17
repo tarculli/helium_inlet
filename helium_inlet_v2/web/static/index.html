@@ -8,8 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
-            /* DARK THEME COLORS */
-            --bg: #020617; /* Very dark slate */
+            --bg: #020617;
             --panel-bg: #0f172a; 
             --card-bg: #1e293b;
             --text-main: #f8fafc;
@@ -21,14 +20,6 @@
             --badge-bg: #0369a1;
             --badge-text: #f0f9ff;
             
-            --danger-bg: #7f1d1d;
-            --danger-text: #fca5a5;
-            --danger-border: #b91c1c;
-            
-            --warning-bg: #78350f;
-            --warning-text: #fde68a;
-            --warning-border: #d97706;
-
             --pipe-on: #22c55e;
             --pipe-off: #ef4444;
         }
@@ -43,7 +34,6 @@
             justify-content: center;
         }
         
-        /* FLUSH RECTANGLE WRAPPER */
         .dashboard-wrapper {
             width: 100%;
             max-width: 1400px;
@@ -104,40 +94,11 @@
             letter-spacing: 0.05em;
         }
 
-        /* VERTICAL LOG STYLING */
-        .log-box-vertical {
-            background-color: var(--bg);
-            border: 1px solid var(--border);
-            padding: 12px;
-            flex: 1;
-            min-height: 500px;
-            overflow-y: auto;
-            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-            font-size: 0.8rem;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        /* HORIZONTAL READOUTS PANEL */
-        .readout-card {
-            background-color: var(--panel-bg);
-            padding: 16px 20px;
-        }
-        .readouts-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 12px;
-            margin-top: 10px;
-        }
-
+        /* LEFT PANEL COMPONENTS */
         .location-section {
             background: var(--card-bg);
             border: 1px solid var(--border);
             padding: 10px 14px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
         }
         .location-header {
             font-size: 0.75rem;
@@ -146,6 +107,41 @@
             letter-spacing: 0.08em;
             color: var(--accent);
             margin-bottom: 6px;
+        }
+
+        .log-box-vertical {
+            background-color: var(--bg);
+            border: 1px solid var(--border);
+            padding: 12px;
+            flex: 1;
+            min-height: 400px;
+            max-height: 650px;
+            overflow-y: auto;
+            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+            font-size: 0.8rem;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        /* RIGHT COLUMN LAYOUT */
+        .right-col { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 1px; 
+            background: var(--border-dark);
+        }
+
+        .diagram-card, .chart-card, .readout-card {
+            background-color: var(--panel-bg);
+            padding: 16px 20px;
+        }
+
+        .readouts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 12px;
+            margin-top: 10px;
         }
 
         .sensor-row {
@@ -162,18 +158,6 @@
         .subtext-val { font-size: 0.75rem; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; color: var(--subtext); margin-top: 1px; font-weight: 500; }
         .disabled-text { color: var(--border-dark) !important; font-size: 0.85rem !important; }
 
-        .right-col { 
-            display: flex; 
-            flex-direction: column; 
-            gap: 1px; 
-            background: var(--border-dark);
-        }
-
-        .diagram-card, .chart-card {
-            background-color: var(--panel-bg);
-            padding: 16px 20px;
-        }
-        
         .diagram-svg-container {
             width: 100%;
             margin-top: 10px;
@@ -184,7 +168,7 @@
 
         .flow-controls {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(5, 1fr);
             gap: 8px;
             margin-top: 12px;
         }
@@ -193,8 +177,8 @@
             background: var(--panel-bg);
             color: var(--text-muted);
             border: 1px solid var(--border);
-            padding: 10px 6px;
-            font-size: 0.7rem;
+            padding: 10px 4px;
+            font-size: 0.68rem;
             font-weight: 700;
             cursor: pointer;
             border-radius: 4px;
@@ -218,21 +202,21 @@
         }
         .chart-container { position: relative; height: 210px; width: 100%; margin-top: 10px; }
 
-        .log-entry { display: flex; gap: 10px; align-items: baseline; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
-        .log-time { color: var(--subtext); font-weight: 600; }
-        .log-tag { font-size: 0.68rem; padding: 2px 6px; font-weight: 800; text-transform: uppercase; }
+        .log-entry { display: flex; gap: 8px; align-items: baseline; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+        .log-time { color: var(--subtext); font-weight: 600; font-size: 0.75rem; }
+        .log-tag { font-size: 0.65rem; padding: 2px 5px; font-weight: 800; text-transform: uppercase; }
         .tag-info { background: #334155; color: #cbd5e1; }
         .tag-success { background: #064e3b; color: #34d399; }
         .tag-warn { background: #78350f; color: #fbbf24; }
         .tag-cmd { background: #1e3a8a; color: #60a5fa; }
         .tag-danger { background: #7f1d1d; color: #fca5a5; }
-        .log-msg { color: var(--text-main); flex: 1; }
+        .log-msg { color: var(--text-main); flex: 1; word-break: break-word; }
 
         .ctrl-btn {
             width: 100%;
-            padding: 8px;
+            padding: 10px;
             margin-top: 6px;
-            font-size: 0.72rem;
+            font-size: 0.75rem;
             letter-spacing: 0.05em;
             border: none;
             font-weight: 800;
@@ -266,9 +250,19 @@
         <!-- Main Layout Grid -->
         <div class="layout">
             
-            <!-- LEFT PANEL: Vertical System Log -->
+            <!-- LEFT PANEL: Emergency Controls + System Logs -->
             <div class="panel">
-                <h2 class="panel-title">System & Event Log</h2>
+                <h2 class="panel-title">System Controls</h2>
+                
+                <!-- RESTORED EMERGENCY / SYSTEM CONTROLS -->
+                <div class="location-section" style="border-color: #ef4444;">
+                    <div class="location-header" style="color: #ef4444;">Safety & Mode Controls</div>
+                    <button id="btn_estop" class="ctrl-btn btn-danger" onclick="triggerEstop()">EMERGENCY SHUTDOWN</button>
+                    <button id="btn_mode" class="ctrl-btn btn-warning" onclick="toggleMode()">SWITCH TO AUTO MODE</button>
+                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 8px; text-align: center; font-weight: 600;" id="mode_status">MANUAL OVERRIDE</div>
+                </div>
+
+                <h2 class="panel-title" style="margin-top: 10px;">System & Event Log</h2>
                 <div class="log-box-vertical" id="logBox">
                     <div class="log-entry">
                         <span class="log-time">--:--:--</span>
@@ -311,26 +305,24 @@
                             <text x="275" y="235" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">Trap B</text>
 
                             <!-- BOXED LABELS (NO VALVE ICONS) -->
-                            <!-- Sample Gas Box -->
                             <rect x="10" y="130" width="90" height="40" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
                             <text x="55" y="154" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">SAMPLE GAS</text>
 
-                            <!-- Waste Gas Box -->
                             <rect x="450" y="130" width="85" height="40" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
                             <text x="492" y="154" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">WASTE</text>
 
-                            <!-- MS Box -->
                             <rect x="650" y="130" width="60" height="40" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
                             <text x="680" y="154" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">MS</text>
                         </svg>
                     </div>
 
-                    <!-- STATE SELECTOR BUTTONS -->
+                    <!-- STATE SELECTOR BUTTONS (INCLUDING STATE 0) -->
                     <div class="flow-controls">
-                        <button id="btn_state_1" class="state-btn" onclick="setFlowState(1)">Sample → Trap A<br>Trap B → Waste</button>
-                        <button id="btn_state_2" class="state-btn" onclick="setFlowState(2)">Sample → Trap B<br>Trap A → Waste</button>
-                        <button id="btn_state_3" class="state-btn" onclick="setFlowState(3)">Sample → Trap A<br>No Waste</button>
-                        <button id="btn_state_4" class="state-btn" onclick="setFlowState(4)">Sample → Trap B<br>No Waste</button>
+                        <button id="btn_state_0" class="state-btn" onclick="setFlowState(0)">State 0<br>All Closed</button>
+                        <button id="btn_state_1" class="state-btn" onclick="setFlowState(1)">State 1<br>Smp→A | B→Wst</button>
+                        <button id="btn_state_2" class="state-btn" onclick="setFlowState(2)">State 2<br>Smp→B | A→Wst</button>
+                        <button id="btn_state_3" class="state-btn" onclick="setFlowState(3)">State 3<br>Smp→A | No Wst</button>
+                        <button id="btn_state_4" class="state-btn" onclick="setFlowState(4)">State 4<br>Smp→B | No Wst</button>
                     </div>
                 </div>
 
@@ -356,14 +348,6 @@
                     <h2 class="panel-title">System Readouts & Telemetry</h2>
                     <div class="readouts-grid">
                         
-                        <!-- SYSTEM CONTROLS -->
-                        <div class="location-section" style="border-color: #ef4444;">
-                            <div class="location-header" style="color: #ef4444;">System Controls</div>
-                            <button id="btn_estop" class="ctrl-btn btn-danger" onclick="triggerEstop()">EMERGENCY SHUTDOWN</button>
-                            <button id="btn_mode" class="ctrl-btn btn-warning" onclick="toggleMode()">SWITCH TO AUTO MODE</button>
-                            <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 6px; text-align: center; font-weight: 600;" id="mode_status">MANUAL OVERRIDE</div>
-                        </div>
-
                         <!-- ENGINE A -->
                         <div class="location-section">
                             <div class="location-header">Engine A</div>
@@ -448,25 +432,25 @@
         </div>
     </div>
 
-    <!-- JavaScript Telemetry & Plotting Stream -->
+    <!-- JavaScript Telemetry, Chart Streaming & State Machine -->
     <script>
         let isAutoMode = false;
-        let currentState = 1;
+        let currentState = 0;
         let ws = null;
 
         const pipeOn = 'var(--pipe-on)';
         const pipeOff = 'var(--pipe-off)';
+        const MAX_HISTORY = 30;
 
         function setFlowState(stateNum) {
             currentState = stateNum;
 
-            // Highlight active button
-            for (let i = 1; i <= 4; i++) {
+            // Highlight active button (0 to 4)
+            for (let i = 0; i <= 4; i++) {
                 const btn = document.getElementById(`btn_state_${i}`);
                 if (btn) btn.classList.toggle('active', i === stateNum);
             }
 
-            // Pipe references
             const pSampleIn = document.getElementById('pipe_sample_in');
             const pSampleA = document.getElementById('pipe_sample_a');
             const pSampleB = document.getElementById('pipe_sample_b');
@@ -474,7 +458,6 @@
             const pTrapBWaste = document.getElementById('pipe_trap_b_waste');
             const pWasteOut = document.getElementById('pipe_waste_out');
             
-            // MS lines (ignored / default off)
             document.getElementById('pipe_trap_a_ms').setAttribute('stroke', pipeOff);
             document.getElementById('pipe_trap_b_ms').setAttribute('stroke', pipeOff);
             document.getElementById('pipe_ms_out').setAttribute('stroke', pipeOff);
@@ -482,6 +465,16 @@
             let logDesc = "";
 
             switch (stateNum) {
+                case 0:
+                    pSampleIn.setAttribute('stroke', pipeOff);
+                    pSampleA.setAttribute('stroke', pipeOff);
+                    pSampleB.setAttribute('stroke', pipeOff);
+                    pTrapAWaste.setAttribute('stroke', pipeOff);
+                    pTrapBWaste.setAttribute('stroke', pipeOff);
+                    pWasteOut.setAttribute('stroke', pipeOff);
+                    logDesc = "State 0 applied: All valves closed / isolated.";
+                    break;
+
                 case 1:
                     pSampleIn.setAttribute('stroke', pipeOn);
                     pSampleA.setAttribute('stroke', pipeOn);
@@ -489,7 +482,7 @@
                     pTrapAWaste.setAttribute('stroke', pipeOff);
                     pTrapBWaste.setAttribute('stroke', pipeOn);
                     pWasteOut.setAttribute('stroke', pipeOn);
-                    logDesc = "Sample gas flowing to trap A, trap B ejecting to waste...";
+                    logDesc = "State 1 applied: Sample -> Trap A | Trap B -> Waste";
                     break;
 
                 case 2:
@@ -499,7 +492,7 @@
                     pTrapAWaste.setAttribute('stroke', pipeOn);
                     pTrapBWaste.setAttribute('stroke', pipeOff);
                     pWasteOut.setAttribute('stroke', pipeOn);
-                    logDesc = "Sample gas flowing to trap B, trap A ejecting to waste...";
+                    logDesc = "State 2 applied: Sample -> Trap B | Trap A -> Waste";
                     break;
 
                 case 3:
@@ -509,7 +502,7 @@
                     pTrapAWaste.setAttribute('stroke', pipeOff);
                     pTrapBWaste.setAttribute('stroke', pipeOff);
                     pWasteOut.setAttribute('stroke', pipeOff);
-                    logDesc = "Sample gas flowing to trap A, waste isolated...";
+                    logDesc = "State 3 applied: Sample -> Trap A | No Waste";
                     break;
 
                 case 4:
@@ -519,7 +512,7 @@
                     pTrapAWaste.setAttribute('stroke', pipeOff);
                     pTrapBWaste.setAttribute('stroke', pipeOff);
                     pWasteOut.setAttribute('stroke', pipeOff);
-                    logDesc = "Sample gas flowing to trap B, waste isolated...";
+                    logDesc = "State 4 applied: Sample -> Trap B | No Waste";
                     break;
             }
 
@@ -541,7 +534,7 @@
             const pipes = document.querySelectorAll('.pipe');
             pipes.forEach(p => p.setAttribute('stroke', pipeOff));
 
-            for (let i = 1; i <= 4; i++) {
+            for (let i = 0; i <= 4; i++) {
                 const btn = document.getElementById(`btn_state_${i}`);
                 if (btn) btn.classList.remove('active');
             }
@@ -595,12 +588,11 @@
             box.scrollTop = box.scrollHeight;
         }
 
-        // CHART THEME CONFIGURATION (Dark Mode)
+        // CHART CONFIGURATIONS
         const gridColor = '#334155';
         const tickColor = '#94a3b8';
         const legendColor = '#cbd5e1';
 
-        // CHART 1: PRESSURE (LOG SCALE)
         const ctxP = document.getElementById('pressureChart').getContext('2d');
         const pressureChart = new Chart(ctxP, {
             type: 'line',
@@ -622,7 +614,6 @@
             }
         });
 
-        // CHART 2: TEMPERATURE
         const ctxT = document.getElementById('tempChart').getContext('2d');
         const tempChart = new Chart(ctxT, {
             type: 'line',
@@ -645,7 +636,17 @@
             }
         });
 
-        // LOG RENDERER
+        function pushChartData(chart, label, values) {
+            chart.data.labels.push(label);
+            values.forEach((v, idx) => chart.data.datasets[idx].data.push(v));
+
+            if (chart.data.labels.length > MAX_HISTORY) {
+                chart.data.labels.shift();
+                chart.data.datasets.forEach(ds => ds.data.shift());
+            }
+            chart.update();
+        }
+
         let lastLogCount = 0;
         function renderLogs(logs) {
             if (!logs || logs.length === lastLogCount) return;
@@ -662,36 +663,69 @@
             box.scrollTop = box.scrollHeight;
         }
 
-        // Initialize default state
-        setFlowState(1);
+        // WEBSOCKET TELEMETRY CONNECTION & AUTOMATIC RECONNECT
+        function connectWebSocket() {
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws/telemetry`);
 
-        // WEBSOCKET TELEMETRY CONNECTION
-        ws = new WebSocket(`ws://${location.host}/ws/telemetry`);
-        ws.onmessage = function(event) {
-            const data = JSON.parse(event.data);
+            ws.onopen = function() {
+                document.getElementById("status").innerText = "CONNECTED";
+                document.getElementById("status").style.background = "#064e3b";
+            };
 
-            if(data.status) document.getElementById("status").innerText = data.status;
-            if(data.device) document.getElementById("device").innerText = data.device;
-            if(data.timestamp) document.getElementById("timestamp").innerText = data.timestamp;
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
 
-            if(data.ch101) document.getElementById("ch101").innerText = data.ch101;
-            if(data.ch102) document.getElementById("ch102").innerText = data.ch102;
-            if(data.ch103) document.getElementById("ch103").innerText = data.ch103;
-            if(data.ch104) document.getElementById("ch104").innerText = data.ch104;
-            
-            if(data.ch115_p) document.getElementById("ch115_p").innerText = data.ch115_p;
-            if(data.ch115_v) document.getElementById("ch115_v").innerText = data.ch115_v;
-            if(data.ch116_p) document.getElementById("ch116_p").innerText = data.ch116_p;
-            if(data.ch116_v) document.getElementById("ch116_v").innerText = data.ch116_v;
-            if(data.ch113) document.getElementById("ch113").innerText = data.ch113;
-            if(data.ch112) document.getElementById("ch112").innerText = data.ch112;
-            if(data.ch118_p) document.getElementById("ch118_p").innerText = data.ch118_p;
-            if(data.ch118_v) document.getElementById("ch118_v").innerText = data.ch118_v;
-            if(data.ch119_p) document.getElementById("ch119_p").innerText = data.ch119_p;
-            if(data.ch119_v) document.getElementById("ch119_v").innerText = data.ch119_v;
+                // 1. Text & Sensor Readouts
+                if (data.status) document.getElementById("status").innerText = data.status;
+                if (data.device) document.getElementById("device").innerText = data.device;
+                if (data.timestamp) document.getElementById("timestamp").innerText = data.timestamp;
 
-            if(data.logs) renderLogs(data.logs);
-        };
+                if (data.ch101) document.getElementById("ch101").innerText = data.ch101;
+                if (data.ch102) document.getElementById("ch102").innerText = data.ch102;
+                if (data.ch103) document.getElementById("ch103").innerText = data.ch103;
+                if (data.ch104) document.getElementById("ch104").innerText = data.ch104;
+                
+                if (data.ch115_p) document.getElementById("ch115_p").innerText = data.ch115_p;
+                if (data.ch115_v) document.getElementById("ch115_v").innerText = data.ch115_v;
+                if (data.ch116_p) document.getElementById("ch116_p").innerText = data.ch116_p;
+                if (data.ch116_v) document.getElementById("ch116_v").innerText = data.ch116_v;
+                if (data.ch113) document.getElementById("ch113").innerText = data.ch113;
+                if (data.ch112) document.getElementById("ch112").innerText = data.ch112;
+                if (data.ch118_p) document.getElementById("ch118_p").innerText = data.ch118_p;
+                if (data.ch119_p) document.getElementById("ch119_p").innerText = data.ch119_p;
+                if (data.ch119_v) document.getElementById("ch119_v").innerText = data.ch119_v;
+
+                // 2. Stream Live Data into Chart.js
+                const timeLabel = data.timestamp || new Date().toLocaleTimeString('en-US', { hour12: false });
+                
+                pushChartData(pressureChart, timeLabel, [
+                    data.ch115_p_val ?? null,
+                    data.ch116_p_val ?? null,
+                    data.ch119_p_val ?? null
+                ]);
+
+                pushChartData(tempChart, timeLabel, [
+                    data.ch101_val ?? null,
+                    data.ch102_val ?? null,
+                    data.ch103_val ?? null,
+                    data.ch104_val ?? null
+                ]);
+
+                // 3. System Logs Sync
+                if (data.logs) renderLogs(data.logs);
+            };
+
+            ws.onclose = function() {
+                document.getElementById("status").innerText = "DISCONNECTED";
+                document.getElementById("status").style.background = "#7f1d1d";
+                setTimeout(connectWebSocket, 3000);
+            };
+        }
+
+        // Initialize state 0 by default
+        setFlowState(0);
+        connectWebSocket();
     </script>
 </body>
 </html>
