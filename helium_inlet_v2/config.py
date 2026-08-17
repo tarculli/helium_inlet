@@ -1,3 +1,8 @@
+'''
+This script sets the various parameters needed in the rest of our program.
+It's just a neat way to store all this information and make quick tweaks.
+'''
+
 # Hardware Communications
 AGILENT_PORT = "/dev/ttyUSB0"
 AGILENT_BAUD = 57600

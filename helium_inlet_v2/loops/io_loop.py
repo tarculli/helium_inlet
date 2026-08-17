@@ -1,21 +1,14 @@
+'''
+This script handles the telemetry loop based on the data stream (temperature, pressure) 
+coming from the Agilent 34970A.
+'''
+
 import time
+
+# Importing local scripts, functions from /helium_inlet_v2/
 from hardware.agilent import Agilent34970A
 import state
 from config import IO_POLL_RATE_SEC
-
-def format_temp(val):
-    if val is None: return "---.-- °C"
-    return f"{val:.2f} °C"
-
-def format_pressure(volts):
-    if volts is None or volts < 0.5: return None, "---.--- Torr"
-    # Formula matching your original Agilent calculations
-    p_val = 10 ** (volts - 10.0) 
-    return p_val, f"{p_val:.2e} Torr"
-
-def format_voltage(volts):
-    if volts is None: return "---.-- V"
-    return f"{volts:.2f} V"
 
 def run_io_loop():
     agilent = Agilent34970A()
@@ -23,7 +16,6 @@ def run_io_loop():
 
     while True:
         loop_start = time.time()
-        
         # Safety initialization so variables always exist
         tc_vals, v_vals = None, None 
 
@@ -31,7 +23,6 @@ def run_io_loop():
         if not agilent.connected:
             state.telemetry_data["status"] = "Connecting..."
             idn = agilent.connect()
-            
             if idn:
                 state.telemetry_data["device"] = f"Device: {idn}"
                 state.telemetry_data["status"] = "● Connected & Streaming"
@@ -54,35 +45,43 @@ def run_io_loop():
         # --- MAP TEMPERATURES (Assuming order: 101, 102, 103, 104) ---
         if tc_vals and len(tc_vals) >= 4:
             state.telemetry_data["ch101_val"] = tc_vals[0]
-            state.telemetry_data["ch101"] = format_temp(tc_vals[0])
+            state.telemetry_data["ch101"] = Agilent34970A.format_temp(tc_vals[0])
+            
             state.telemetry_data["ch102_val"] = tc_vals[1]
-            state.telemetry_data["ch102"] = format_temp(tc_vals[1])
+            state.telemetry_data["ch102"] = Agilent34970A.format_temp(tc_vals[1])
+            
             state.telemetry_data["ch103_val"] = tc_vals[2]
-            state.telemetry_data["ch103"] = format_temp(tc_vals[2])
+            state.telemetry_data["ch103"] = Agilent34970A.format_temp(tc_vals[2])
+            
             state.telemetry_data["ch104_val"] = tc_vals[3]
-            state.telemetry_data["ch104"] = format_temp(tc_vals[3])
+            state.telemetry_data["ch104"] = Agilent34970A.format_temp(tc_vals[3])
 
         # --- MAP VOLTAGES & PRESSURES (Assuming order: 112, 113, 115, 116, 118, 119) ---
         if v_vals and len(v_vals) >= 6:
-            state.telemetry_data["ch112"] = format_voltage(v_vals[0])
-            state.telemetry_data["ch113"] = format_voltage(v_vals[1])
+            # Turbos
+            state.telemetry_data["ch112"] = Agilent34970A.format_voltage(v_vals[0])
+            state.telemetry_data["ch113"] = Agilent34970A.format_voltage(v_vals[1])
             
-            p115, p115_str = format_pressure(v_vals[2])
+            # Chamber AIM-SL Gauge (115)
+            p115, p115_str = Agilent34970A.calc_chamber_aim_sl_pressure(v_vals[2])
             state.telemetry_data["ch115_p_val"] = p115
             state.telemetry_data["ch115_p"] = p115_str
-            state.telemetry_data["ch115_v"] = format_voltage(v_vals[2])
+            state.telemetry_data["ch115_v"] = Agilent34970A.format_voltage(v_vals[2])
             
-            p116, p116_str = format_pressure(v_vals[3])
+            # Trap Penning Gauge (116)
+            p116, p116_str = Agilent34970A.calc_trap_penning_pressure(v_vals[3])
             state.telemetry_data["ch116_p_val"] = p116
             state.telemetry_data["ch116_p"] = p116_str
-            state.telemetry_data["ch116_v"] = format_voltage(v_vals[3])
+            state.telemetry_data["ch116_v"] = Agilent34970A.format_voltage(v_vals[3])
             
-            state.telemetry_data["ch118_v"] = format_voltage(v_vals[4])
+            # Unconnected HiVac (118)
+            state.telemetry_data["ch118_v"] = Agilent34970A.format_voltage(v_vals[4])
             
-            p119, p119_str = format_pressure(v_vals[5])
+            # Trap LoVac Convectron (119)
+            p119, p119_str = Agilent34970A.calc_convectron_375_pressure(v_vals[5])
             state.telemetry_data["ch119_p_val"] = p119
             state.telemetry_data["ch119_p"] = p119_str
-            state.telemetry_data["ch119_v"] = format_voltage(v_vals[5])
+            state.telemetry_data["ch119_v"] = Agilent34970A.format_voltage(v_vals[5])
 
         # 4. Metadata Update
         state.telemetry_data["timestamp"] = f"Last Update: {time.strftime('%H:%M:%S')}"

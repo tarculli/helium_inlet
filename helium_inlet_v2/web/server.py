@@ -1,12 +1,16 @@
+'''
+This script launches the web server for our instrument's live data GUI.
+'''
+
 import asyncio
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+
 import state
 from config import WEBSOCKET_PUSH_RATE_SEC
 
 app = FastAPI(title="Helium Inlet API")
-# Point directly to where index.html is stored
 templates = Jinja2Templates(directory="web/static")
 
 @app.get("/", response_class=HTMLResponse)

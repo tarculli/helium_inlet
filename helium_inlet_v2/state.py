@@ -1,12 +1,28 @@
+'''
+This script serves as the central controller and state manager for the Helium MS program. 
+It collects telemetry from hardware loops (e.g., Watchdog, Agilent), maintains the system command queue, 
+and interfaces with the web API to ensure safe, coordinated system operation.
+'''
+
 import time
 from queue import Queue
+
+# Setting the maximum log entries based on the parameter noted by the config.py file in /helium_inlet_v2/
 from config import MAX_LOG_ENTRIES
 
 # Thread-safe queue for hardware commands (e.g., {"device": "agilent", "cmd": "OPEN_VALVE_A"})
 command_queue = Queue()
 
+# List to store important system information, events
 system_logs = []
 
+def log_event(message: str, level: str = "INFO"):
+    timestamp = time.strftime("%H:%M:%S")
+    system_logs.append({"time": timestamp, "level": level, "msg": message})
+    if len(system_logs) > MAX_LOG_ENTRIES:
+        system_logs.pop(0)
+
+# Stores the current live snapshot of the entire physical system
 telemetry_data = {
     "status": "Initializing...",
     "device": "Disconnected",
@@ -36,9 +52,3 @@ telemetry_data = {
     "ch118_p": "N/A", "ch118_p_val": None, "ch118_v": "N/A",
     "ch119_p": "---.--- Torr", "ch119_p_val": None, "ch119_v": "---.-- V",
 }
-
-def log_event(message: str, level: str = "INFO"):
-    timestamp = time.strftime("%H:%M:%S")
-    system_logs.append({"time": timestamp, "level": level, "msg": message})
-    if len(system_logs) > MAX_LOG_ENTRIES:
-        system_logs.pop(0)
