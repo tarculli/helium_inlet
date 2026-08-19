@@ -62,7 +62,7 @@
         .status-badge {
             font-size: 0.82rem;
             padding: 4px 12px;
-            background: var(--badge-bg);
+            background: #78350f;
             color: var(--badge-text);
             font-weight: 700;
             text-transform: uppercase;
@@ -242,8 +242,8 @@
                 <div id="device" style="color: var(--text-muted); font-size: 0.8rem; margin-top: 3px; font-weight: 500;">Device: Disconnected</div>
             </div>
             <div style="text-align: right;">
-                <span id="status" class="status-badge">Connecting...</span>
-                <div id="timestamp" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; font-weight: 500;">Waiting for data...</div>
+                <span id="status" class="status-badge">CONNECTING...</span>
+                <div id="timestamp" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; font-weight: 500;">Waiting for server telemetry...</div>
             </div>
         </div>
 
@@ -254,7 +254,7 @@
             <div class="panel">
                 <h2 class="panel-title">System Controls</h2>
                 
-                <!-- RESTORED EMERGENCY / SYSTEM CONTROLS -->
+                <!-- SAFETY CONTROLS -->
                 <div class="location-section" style="border-color: #ef4444;">
                     <div class="location-header" style="color: #ef4444;">Safety & Mode Controls</div>
                     <button id="btn_estop" class="ctrl-btn btn-danger" onclick="triggerEstop()">EMERGENCY SHUTDOWN</button>
@@ -267,7 +267,7 @@
                     <div class="log-entry">
                         <span class="log-time">--:--:--</span>
                         <span class="log-tag tag-info">INFO</span>
-                        <span class="log-msg">Awaiting system events...</span>
+                        <span class="log-msg">System initialized. Awaiting commands/telemetry...</span>
                     </div>
                 </div>
             </div>
@@ -304,7 +304,7 @@
                             <rect x="220" y="200" width="110" height="60" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
                             <text x="275" y="235" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">Trap B</text>
 
-                            <!-- BOXED LABELS (NO VALVE ICONS) -->
+                            <!-- BOXED LABELS -->
                             <rect x="10" y="130" width="90" height="40" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
                             <text x="55" y="154" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">SAMPLE GAS</text>
 
@@ -316,7 +316,7 @@
                         </svg>
                     </div>
 
-                    <!-- STATE SELECTOR BUTTONS (INCLUDING STATE 0) -->
+                    <!-- STATE SELECTOR BUTTONS -->
                     <div class="flow-controls">
                         <button id="btn_state_0" class="state-btn" onclick="setFlowState(0)">State 0<br>All Closed</button>
                         <button id="btn_state_1" class="state-btn" onclick="setFlowState(1)">State 1<br>Smp→A | B→Wst</button>
@@ -432,7 +432,7 @@
         </div>
     </div>
 
-    <!-- JavaScript Telemetry, Chart Streaming & State Machine -->
+    <!-- JavaScript Control Logic & Telemetry Streaming -->
     <script>
         let isAutoMode = false;
         let currentState = 0;
@@ -442,10 +442,10 @@
         const pipeOff = 'var(--pipe-off)';
         const MAX_HISTORY = 30;
 
-        function setFlowState(stateNum) {
+        function applyVisualFlowState(stateNum) {
             currentState = stateNum;
 
-            // Highlight active button (0 to 4)
+            // Highlight state buttons (0 to 4)
             for (let i = 0; i <= 4; i++) {
                 const btn = document.getElementById(`btn_state_${i}`);
                 if (btn) btn.classList.toggle('active', i === stateNum);
@@ -472,7 +472,7 @@
                     pTrapAWaste.setAttribute('stroke', pipeOff);
                     pTrapBWaste.setAttribute('stroke', pipeOff);
                     pWasteOut.setAttribute('stroke', pipeOff);
-                    logDesc = "State 0 applied: All valves closed / isolated.";
+                    logDesc = "State 0: All valves closed / isolated.";
                     break;
 
                 case 1:
@@ -482,7 +482,7 @@
                     pTrapAWaste.setAttribute('stroke', pipeOff);
                     pTrapBWaste.setAttribute('stroke', pipeOn);
                     pWasteOut.setAttribute('stroke', pipeOn);
-                    logDesc = "State 1 applied: Sample -> Trap A | Trap B -> Waste";
+                    logDesc = "State 1: Sample -> Trap A | Trap B -> Waste";
                     break;
 
                 case 2:
@@ -492,7 +492,7 @@
                     pTrapAWaste.setAttribute('stroke', pipeOn);
                     pTrapBWaste.setAttribute('stroke', pipeOff);
                     pWasteOut.setAttribute('stroke', pipeOn);
-                    logDesc = "State 2 applied: Sample -> Trap B | Trap A -> Waste";
+                    logDesc = "State 2: Sample -> Trap B | Trap A -> Waste";
                     break;
 
                 case 3:
@@ -502,7 +502,7 @@
                     pTrapAWaste.setAttribute('stroke', pipeOff);
                     pTrapBWaste.setAttribute('stroke', pipeOff);
                     pWasteOut.setAttribute('stroke', pipeOff);
-                    logDesc = "State 3 applied: Sample -> Trap A | No Waste";
+                    logDesc = "State 3: Sample -> Trap A | No Waste";
                     break;
 
                 case 4:
@@ -512,37 +512,35 @@
                     pTrapAWaste.setAttribute('stroke', pipeOff);
                     pTrapBWaste.setAttribute('stroke', pipeOff);
                     pWasteOut.setAttribute('stroke', pipeOff);
-                    logDesc = "State 4 applied: Sample -> Trap B | No Waste";
+                    logDesc = "State 4: Sample -> Trap B | No Waste";
                     break;
             }
 
-            injectLocalLog("CMD", logDesc);
+            return logDesc;
+        }
+
+        function setFlowState(stateNum) {
+            const logDesc = applyVisualFlowState(stateNum);
+            injectLocalLog("CMD", `Valve State Changed: ${logDesc}`);
 
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({
                     command: "SET_FLOW_STATE",
                     state: stateNum,
-                    description: logDesc
+                    timestamp: new Date().toISOString()
                 }));
             }
         }
 
         function triggerEstop() {
-            const logDesc = "EMERGENCY SHUTDOWN INITIATED. ALL FLOWS STOPPED.";
+            const logDesc = "EMERGENCY SHUTDOWN INITIATED. ALL VALVES CLOSED.";
+            applyVisualFlowState(0);
             injectLocalLog("DANGER", logDesc);
-            
-            const pipes = document.querySelectorAll('.pipe');
-            pipes.forEach(p => p.setAttribute('stroke', pipeOff));
-
-            for (let i = 0; i <= 4; i++) {
-                const btn = document.getElementById(`btn_state_${i}`);
-                if (btn) btn.classList.remove('active');
-            }
 
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({
                     command: "ESTOP",
-                    description: logDesc
+                    timestamp: new Date().toISOString()
                 }));
             }
         }
@@ -569,7 +567,7 @@
                 ws.send(JSON.stringify({
                     command: "SET_MODE",
                     auto_mode: isAutoMode,
-                    description: logDesc
+                    timestamp: new Date().toISOString()
                 }));
             }
         }
@@ -582,6 +580,7 @@
             
             let tagClass = "tag-cmd";
             if(level === "DANGER") tagClass = "tag-danger";
+            if(level === "WARN") tagClass = "tag-warn";
             
             entry.innerHTML = `<span class="log-time">${timeStr}</span><span class="log-tag ${tagClass}">${level}</span><span class="log-msg" style="font-weight: 600;">${msg}</span>`;
             box.appendChild(entry);
@@ -652,7 +651,6 @@
             if (!logs || logs.length === lastLogCount) return;
             lastLogCount = logs.length;
             const box = document.getElementById("logBox");
-            if (logs.length === 1) box.innerHTML = ""; 
             
             const latestLog = logs[logs.length - 1];
             const entry = document.createElement("div");
@@ -663,69 +661,85 @@
             box.scrollTop = box.scrollHeight;
         }
 
-        // WEBSOCKET TELEMETRY CONNECTION & AUTOMATIC RECONNECT
+        // TELEMETRY HANDLER
+        function updateTelemetry(data) {
+            if (data.status) {
+                const sEl = document.getElementById("status");
+                sEl.innerText = data.status;
+                sEl.style.background = data.status === "CONNECTED" ? "#064e3b" : "#78350f";
+            }
+            if (data.device) document.getElementById("device").innerText = data.device;
+            if (data.timestamp) document.getElementById("timestamp").innerText = data.timestamp;
+
+            if (data.ch101) document.getElementById("ch101").innerText = data.ch101;
+            if (data.ch102) document.getElementById("ch102").innerText = data.ch102;
+            if (data.ch103) document.getElementById("ch103").innerText = data.ch103;
+            if (data.ch104) document.getElementById("ch104").innerText = data.ch104;
+
+            if (data.ch115_p) document.getElementById("ch115_p").innerText = data.ch115_p;
+            if (data.ch115_v) document.getElementById("ch115_v").innerText = data.ch115_v;
+            if (data.ch113) document.getElementById("ch113").innerText = data.ch113;
+
+            if (data.ch116_p) document.getElementById("ch116_p").innerText = data.ch116_p;
+            if (data.ch116_v) document.getElementById("ch116_v").innerText = data.ch116_v;
+            if (data.ch112) document.getElementById("ch112").innerText = data.ch112;
+
+            if (data.ch119_p) document.getElementById("ch119_p").innerText = data.ch119_p;
+            if (data.ch119_v) document.getElementById("ch119_v").innerText = data.ch119_v;
+
+            // Sync flow state visual if backend forces or returns state
+            if (typeof data.flow_state === "number" && data.flow_state !== currentState) {
+                applyVisualFlowState(data.flow_state);
+            }
+
+            if (data.chart_pressures && data.time_label) {
+                pushChartData(pressureChart, data.time_label, data.chart_pressures);
+            }
+            if (data.chart_temps && data.time_label) {
+                pushChartData(tempChart, data.time_label, data.chart_temps);
+            }
+
+            if (data.logs) renderLogs(data.logs);
+        }
+
+        // WEBSOCKET CONNECTION
         function connectWebSocket() {
             const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws/telemetry`);
+            const wsHost = window.location.host || 'localhost:8000';
+            ws = new WebSocket(`${wsProtocol}//${wsHost}/ws/telemetry`);
 
             ws.onopen = function() {
-                document.getElementById("status").innerText = "CONNECTED";
-                document.getElementById("status").style.background = "#064e3b";
+                const sEl = document.getElementById("status");
+                sEl.innerText = "CONNECTED";
+                sEl.style.background = "#064e3b";
+                injectLocalLog("INFO", "Connected to hardware backend via WebSocket.");
             };
 
             ws.onmessage = function(event) {
-                const data = JSON.parse(event.data);
+                try {
+                    const data = JSON.parse(event.data);
+                    updateTelemetry(data);
+                } catch(e) {
+                    console.error("Failed to parse telemetry JSON", e);
+                }
+            };
 
-                // 1. Text & Sensor Readouts
-                if (data.status) document.getElementById("status").innerText = data.status;
-                if (data.device) document.getElementById("device").innerText = data.device;
-                if (data.timestamp) document.getElementById("timestamp").innerText = data.timestamp;
-
-                if (data.ch101) document.getElementById("ch101").innerText = data.ch101;
-                if (data.ch102) document.getElementById("ch102").innerText = data.ch102;
-                if (data.ch103) document.getElementById("ch103").innerText = data.ch103;
-                if (data.ch104) document.getElementById("ch104").innerText = data.ch104;
-                
-                if (data.ch115_p) document.getElementById("ch115_p").innerText = data.ch115_p;
-                if (data.ch115_v) document.getElementById("ch115_v").innerText = data.ch115_v;
-                if (data.ch116_p) document.getElementById("ch116_p").innerText = data.ch116_p;
-                if (data.ch116_v) document.getElementById("ch116_v").innerText = data.ch116_v;
-                if (data.ch113) document.getElementById("ch113").innerText = data.ch113;
-                if (data.ch112) document.getElementById("ch112").innerText = data.ch112;
-                if (data.ch118_p) document.getElementById("ch118_p").innerText = data.ch118_p;
-                if (data.ch119_p) document.getElementById("ch119_p").innerText = data.ch119_p;
-                if (data.ch119_v) document.getElementById("ch119_v").innerText = data.ch119_v;
-
-                // 2. Stream Live Data into Chart.js
-                const timeLabel = data.timestamp || new Date().toLocaleTimeString('en-US', { hour12: false });
-                
-                pushChartData(pressureChart, timeLabel, [
-                    data.ch115_p_val ?? null,
-                    data.ch116_p_val ?? null,
-                    data.ch119_p_val ?? null
-                ]);
-
-                pushChartData(tempChart, timeLabel, [
-                    data.ch101_val ?? null,
-                    data.ch102_val ?? null,
-                    data.ch103_val ?? null,
-                    data.ch104_val ?? null
-                ]);
-
-                // 3. System Logs Sync
-                if (data.logs) renderLogs(data.logs);
+            ws.onerror = function(err) {
+                console.error("WebSocket error:", err);
             };
 
             ws.onclose = function() {
-                document.getElementById("status").innerText = "DISCONNECTED";
-                document.getElementById("status").style.background = "#7f1d1d";
+                const sEl = document.getElementById("status");
+                sEl.innerText = "DISCONNECTED";
+                sEl.style.background = "#78350f";
                 setTimeout(connectWebSocket, 3000);
             };
         }
 
-        // Initialize state 0 by default
-        setFlowState(0);
-        connectWebSocket();
+        window.addEventListener('DOMContentLoaded', () => {
+            applyVisualFlowState(0);
+            connectWebSocket();
+        });
     </script>
 </body>
 </html>
