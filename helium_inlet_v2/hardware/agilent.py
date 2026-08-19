@@ -68,51 +68,66 @@ class Agilent34970A:
     # --- CLIPPARD VALVE CONTROL METHODS ---
 
     def set_flow_state(self, state_num: int) -> bool:
-   
-        # Fix 1: Auto-reconnect if connection was dropped by a transient error
-        if not self.device or not self.device.is_open:
-            if not self.connect():
-                return False
+        """
+        Pressurizes required valves and depressurizes remaining channels.
+        Queries the Agilent hardware directly to verify command receipt & state.
+        """
+        if not self.connected or not self.device:
+            print("[Agilent Verification] FAILED: Device not connected.")
+            return False
 
         if state_num not in STATE_VALVE_MAP:
             raise ValueError(f"Invalid state requested: {state_num}")
 
         active_valves = STATE_VALVE_MAP[state_num]
 
+        # Calculate exact 3-digit channel IDs safely
+        all_channels = {
+            v: f"{VALVE_SLOT_PREFIX}{ch}" for v, ch in VALVE_CHANNELS.items()
+        }
+
+        close_list = [all_channels[v] for v in active_valves if v in all_channels]
+        open_list = [ch for ch in all_channels.values() if ch not in close_list]
+
         try:
-            # Build map ensuring proper channel string construction
-            all_channels = {
-                v: f"{VALVE_SLOT_PREFIX}{ch}" for v, ch in VALVE_CHANNELS.items()
-            }
-
-            close_list = [all_channels[v] for v in active_valves if v in all_channels]
-            open_list = [
-                ch for ch in all_channels.values() if ch not in close_list
-            ]
-
-            # Fix 2: Combine into a single atomic SCPI command string
-            scpi_cmds = []
+            # 1. Clear instrument error queue
+            self.device.write(b"*CLS\r\n")
+            
+            # 2. Transmit channel open/close commands
             if open_list:
                 open_str = ",".join(str(ch) for ch in open_list)
-                scpi_cmds.append(f"ROUTe:OPEn (@{open_str})")
+                self.device.write(f"ROUTe:OPEn (@{open_str})\r\n".encode("utf-8"))
 
             if close_list:
                 close_str = ",".join(str(ch) for ch in close_list)
-                scpi_cmds.append(f"ROUTe:CLOSe (@{close_str})")
+                self.device.write(f"ROUTe:CLOSe (@{close_str})\r\n".encode("utf-8"))
 
-            if scpi_cmds:
-                # Join multiple SCPI commands using ';:' root navigation
-                full_cmd = ";:".join(scpi_cmds) + "\r\n"
-                
-                # Fix 3: Write and explicitly FLUSH software buffer to hardware line
-                self.device.write(full_cmd.encode("utf-8"))
-                self.device.flush() 
+            self.device.flush()  # Force flush software buffer over RS-232
 
-            self.connected = True
-            return True
+            # --- VERIFICATION STEP 1: Query Hardware Relay States ---
+            if close_list:
+                chk_str = ",".join(str(ch) for ch in close_list)
+                self.device.write(f"ROUTe:CLOSe? (@{chk_str})\r\n".encode("utf-8"))
+                self.device.flush()
+                relay_states = self.device.readline().decode("utf-8", errors="ignore").strip()
+                print(f"[Agilent Verification] Active Channels (@{chk_str}) Hardware States: {relay_states}")
+
+            # --- VERIFICATION STEP 2: Query Hardware Error Queue ---
+            self.device.write(b"SYSTem:ERRor?\r\n")
+            self.device.flush()
+            sys_err = self.device.readline().decode("utf-8", errors="ignore").strip()
+            print(f"[Agilent Verification] System Error Response: {sys_err}")
+
+            # If system returned 'No error', the command was parsed and executed
+            if "+0" in sys_err or "No error" in sys_err:
+                print(f"[Agilent Verification] SUCCESS: State {state_num} applied & acknowledged.")
+                return True
+            else:
+                print(f"[Agilent Verification] ERROR: Command rejected by Agilent: {sys_err}")
+                return False
 
         except Exception as e:
-            print(f"[Agilent34970A Error] set_flow_state failed: {e}")
+            print(f"[Agilent Verification] EXCEPTION: Serial communication failed: {e}")
             self.connected = False
             return False
 
