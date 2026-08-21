@@ -69,7 +69,6 @@ class Agilent34970A:
             return None, None
 
     def set_flow_state(self, state_num: int) -> bool:
-        """Sends clean OPEN/CLOSE commands to relays without buffer-clogging queries."""
         if not self.connected or not self.device:
             return False
 
@@ -78,9 +77,9 @@ class Agilent34970A:
 
         active_valves = STATE_VALVE_MAP[state_num]
 
-        # Enforce exact 3-digit channel syntax (e.g., "101", "102")
+        # Convert valve names to exact 3-digit channel integers (e.g., 200 + 8 = 208)
         all_channels = {
-            v: f"{int(VALVE_SLOT_PREFIX)}{int(ch):02d}"
+            v: str(VALVE_SLOT_PREFIX + int(ch))
             for v, ch in VALVE_CHANNELS.items()
         }
 
@@ -90,16 +89,14 @@ class Agilent34970A:
         try:
             self.device.reset_input_buffer()
 
-            # 1. Open unused relay channels (Depressurize)
+            # Open non-active channels (depressurize unused paths)
             if open_list:
-                open_str = ",".join(open_list)
-                self.device.write(f"ROUTe:OPEn (@{open_str})\r\n".encode("utf-8"))
+                self.device.write(f"ROUTe:OPEn (@{','.join(open_list)})\r\n".encode("utf-8"))
                 time.sleep(0.1)
 
-            # 2. Close active relay channels (Pressurize)
+            # Close active channels (pressurize active path)
             if close_list:
-                close_str = ",".join(close_list)
-                self.device.write(f"ROUTe:CLOSe (@{close_str})\r\n".encode("utf-8"))
+                self.device.write(f"ROUTe:CLOSe (@{','.join(close_list)})\r\n".encode("utf-8"))
                 time.sleep(0.1)
 
             return True
@@ -109,21 +106,16 @@ class Agilent34970A:
             return False
 
     def emergency_stop(self) -> bool:
-        """Opens all relay channels immediately."""
         if not self.connected or not self.device:
             return False
 
-        all_channels = [
-            f"{int(VALVE_SLOT_PREFIX)}{int(ch):02d}" for ch in VALVE_CHANNELS.values()
-        ]
-        ch_str = ",".join(all_channels)
+        all_channels = [str(VALVE_SLOT_PREFIX + int(ch)) for ch in VALVE_CHANNELS.values()]
         try:
-            self.device.write(f"ROUTe:OPEn (@{ch_str})\r\n".encode("utf-8"))
+            self.device.write(f"ROUTe:OPEn (@{','.join(all_channels)})\r\n".encode("utf-8"))
             return True
         except Exception:
             self.connected = False
             return False
-
     @staticmethod
     def format_temp(val):
         if val is None: return "---.-- °C"
