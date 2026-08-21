@@ -1,5 +1,7 @@
 '''
 This script launches the web server for our instrument's live data GUI.
+It streams live telemetry out to connected clients and listens for incoming 
+valve state and safety commands from the UI.
 '''
 
 import asyncio
@@ -20,9 +22,51 @@ async def get_dashboard(request: Request):
 @app.websocket("/ws/telemetry")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    try:
-        while True:
-            await websocket.send_json(state.telemetry_data)
-            await asyncio.sleep(WEBSOCKET_PUSH_RATE_SEC)
-    except (WebSocketDisconnect, Exception):
-        pass
+
+    async def receive_commands():
+        """Listens for JSON payloads sent from the frontend state buttons."""
+        try:
+            while True:
+                data = await websocket.receive_json()
+                cmd = data.get("command")
+
+                if cmd == "SET_FLOW_STATE":
+                    state.enqueue_command({
+                        "cmd": "SET_FLOW_STATE", 
+                        "state": data.get("state")
+                    })
+
+                elif cmd == "ESTOP":
+                    state.enqueue_command({
+                        "cmd": "ESTOP"
+                    })
+
+                elif cmd == "SET_MODE":
+                    mode_str = "AUTOMATIC" if data.get("auto_mode") else "READ-ONLY MONITORING"
+                    state.enqueue_command({
+                        "cmd": "SET_MODE", 
+                        "mode": mode_str
+                    })
+
+        except (WebSocketDisconnect, Exception):
+            pass
+
+    async def stream_telemetry():
+        """Pushes live system telemetry out to the browser."""
+        try:
+            while True:
+                await websocket.send_json(state.telemetry_data)
+                await asyncio.sleep(WEBSOCKET_PUSH_RATE_SEC)
+        except (WebSocketDisconnect, Exception):
+            pass
+
+    # Run incoming listener and outgoing telemetry stream concurrently
+    recv_task = asyncio.create_task(receive_commands())
+    send_task = asyncio.create_task(stream_telemetry())
+
+    done, pending = await asyncio.wait(
+        [recv_task, send_task],
+        return_when=asyncio.FIRST_COMPLETED,
+    )
+    for task in pending:
+        task.cancel()
