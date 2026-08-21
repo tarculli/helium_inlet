@@ -1,6 +1,6 @@
 '''
 This script handles the telemetry loop based on the data stream (temperature, pressure) 
-coming from the Agilent 34970A.
+coming from the Agilent 34970A and processes pending hardware control commands.
 '''
 
 import time
@@ -16,7 +16,6 @@ def run_io_loop():
 
     while True:
         loop_start = time.time()
-        # Safety initialization so variables always exist
         tc_vals, v_vals = None, None 
 
         # 1. Connection Management
@@ -27,22 +26,25 @@ def run_io_loop():
                 state.telemetry_data["device"] = f"Device: {idn}"
                 state.telemetry_data["status"] = "● Connected & Streaming"
                 state.log_event("Agilent connected.", "SUCCESS")
-                # Skip the rest of this cycle so we can read data on the next one
                 continue 
             else:
                 state.telemetry_data["status"] = "● Connection Lost! Retrying..."
                 time.sleep(3.0)
                 continue
-        else:
-            # 2. Hardware Acquisition
-            tc_vals, v_vals = agilent.read_all()
-            if not tc_vals or not v_vals:
-                state.log_event("Lost connection to Agilent.", "WARN")
-                agilent.connected = False
-                continue
 
-        # 3. Data Mapping & Formatting
-        # --- MAP TEMPERATURES (Assuming order: 101, 102, 103, 104) ---
+        # 2. PROCESS QUEUED COMMANDS (Valve State Changes / E-STOP)
+        # Pulls pending UI clicks from state.command_queue and triggers hardware
+        state.process_command_queue(agilent)
+
+        # 3. Hardware Acquisition
+        tc_vals, v_vals = agilent.read_all()
+        if tc_vals is None or v_vals is None:
+            state.log_event("Lost connection to Agilent.", "WARN")
+            agilent.connected = False
+            continue
+
+        # 4. Data Mapping & Formatting
+        # --- MAP TEMPERATURES (101, 102, 103, 104) ---
         if tc_vals and len(tc_vals) >= 4:
             state.telemetry_data["ch101_val"] = tc_vals[0]
             state.telemetry_data["ch101"] = Agilent34970A.format_temp(tc_vals[0])
@@ -56,7 +58,7 @@ def run_io_loop():
             state.telemetry_data["ch104_val"] = tc_vals[3]
             state.telemetry_data["ch104"] = Agilent34970A.format_temp(tc_vals[3])
 
-        # --- MAP VOLTAGES & PRESSURES (Assuming order: 112, 113, 115, 116, 118, 119) ---
+        # --- MAP VOLTAGES & PRESSURES (112, 113, 115, 116, 118, 119) ---
         if v_vals and len(v_vals) >= 6:
             # Turbos
             state.telemetry_data["ch112"] = Agilent34970A.format_voltage(v_vals[0])
@@ -83,10 +85,10 @@ def run_io_loop():
             state.telemetry_data["ch119_p"] = p119_str
             state.telemetry_data["ch119_v"] = Agilent34970A.format_voltage(v_vals[5])
 
-        # 4. Metadata Update
+        # 5. Metadata Update
         state.telemetry_data["timestamp"] = f"Last Update: {time.strftime('%H:%M:%S')}"
         state.telemetry_data["logs"] = list(state.system_logs)
 
-        # 5. Timing Enforcement
+        # 6. Timing Enforcement
         elapsed = time.time() - loop_start
         time.sleep(max(0.01, IO_POLL_RATE_SEC - elapsed))
