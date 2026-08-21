@@ -30,38 +30,49 @@ class Agilent34970A:
                 bytesize=serial.EIGHTBITS,
                 parity=serial.PARITY_NONE,
                 stopbits=serial.STOPBITS_ONE,
-                timeout=2.0,
+                timeout=3.0,  # Bumping timeout for DMM scans
             )
             self.device.reset_input_buffer()
             self.device.reset_output_buffer()
             self.device.write(b"*CLS\r\n")
             self.device.write(b"*IDN?\r\n")
+            time.sleep(0.1)
             idn = self.device.readline().decode("utf-8", errors="ignore").strip()
             self.connected = bool(idn)
             return idn
-        except Exception:
+        except Exception as e:
+            print(f"[Agilent Connection Error] {e}")
             self.connected = False
             return None
 
     def read_all(self):
-        if not self.connected:
+        if not self.connected or not self.device:
             return None, None
 
         try:
+            self.device.reset_input_buffer()
+            
+            # Read Thermocouples
             self.device.write(
                 f"MEASure:TEMPerature? TC,T,DEF,(@{TC_CHANNELS})\r\n".encode("utf-8")
             )
+            self.device.flush()
+            time.sleep(0.1)
             raw_tc = self.device.readline().decode("utf-8", errors="ignore").strip()
 
+            # Read Voltages
             self.device.write(
                 f"MEASure:VOLTage:DC? AUTO,DEF,(@{VOLT_CHANNELS})\r\n".encode("utf-8")
             )
+            self.device.flush()
+            time.sleep(0.1)
             raw_volt = self.device.readline().decode("utf-8", errors="ignore").strip()
 
-            tc_vals = [float(x) if x else None for x in raw_tc.split(",")]
-            v_vals = [float(x) if x else None for x in raw_volt.split(",")]
+            tc_vals = [float(x) for x in raw_tc.split(",") if x.strip()] if raw_tc else []
+            v_vals = [float(x) for x in raw_volt.split(",") if x.strip()] if raw_volt else []
             return tc_vals, v_vals
-        except Exception:
+        except Exception as e:
+            print(f"[Agilent34970A Read Error] {e}")
             self.connected = False
             return None, None
 
@@ -69,8 +80,8 @@ class Agilent34970A:
 
     def set_flow_state(self, state_num: int) -> bool:
         """
-        Pressurizes required valves and depressurizes remaining channels.
-        Queries the Agilent hardware directly to verify command receipt & state.
+        Pressurizes required valves (ROUTe:CLOSe) and depressurizes remaining channels (ROUTe:OPEn).
+        Queries hardware directly to verify execution.
         """
         if not self.connected or not self.device:
             print("[Agilent Verification] FAILED: Device not connected.")
@@ -81,44 +92,48 @@ class Agilent34970A:
 
         active_valves = STATE_VALVE_MAP[state_num]
 
-        # Calculate exact 3-digit channel IDs safely
+        # Guarantees exact 3-digit SCPI channel formatting (e.g., 101, 102)
         all_channels = {
-            v: f"{VALVE_SLOT_PREFIX}{ch}" for v, ch in VALVE_CHANNELS.items()
+            v: f"{int(VALVE_SLOT_PREFIX)}{int(ch):02d}"
+            for v, ch in VALVE_CHANNELS.items()
         }
 
         close_list = [all_channels[v] for v in active_valves if v in all_channels]
         open_list = [ch for ch in all_channels.values() if ch not in close_list]
 
         try:
-            # 1. Clear instrument error queue
+            self.device.reset_input_buffer()
             self.device.write(b"*CLS\r\n")
-            
-            # 2. Transmit channel open/close commands
+
+            # 1. Depressurize unneeded channels (Open relays)
             if open_list:
-                open_str = ",".join(str(ch) for ch in open_list)
+                open_str = ",".join(open_list)
                 self.device.write(f"ROUTe:OPEn (@{open_str})\r\n".encode("utf-8"))
 
+            # 2. Pressurize active channels (Close relays)
             if close_list:
-                close_str = ",".join(str(ch) for ch in close_list)
+                close_str = ",".join(close_list)
                 self.device.write(f"ROUTe:CLOSe (@{close_str})\r\n".encode("utf-8"))
 
-            self.device.flush()  # Force flush software buffer over RS-232
+            self.device.flush()
+            time.sleep(0.05)  # Relay settling delay
 
             # --- VERIFICATION STEP 1: Query Hardware Relay States ---
             if close_list:
-                chk_str = ",".join(str(ch) for ch in close_list)
+                chk_str = ",".join(close_list)
                 self.device.write(f"ROUTe:CLOSe? (@{chk_str})\r\n".encode("utf-8"))
                 self.device.flush()
+                time.sleep(0.05)
                 relay_states = self.device.readline().decode("utf-8", errors="ignore").strip()
                 print(f"[Agilent Verification] Active Channels (@{chk_str}) Hardware States: {relay_states}")
 
             # --- VERIFICATION STEP 2: Query Hardware Error Queue ---
             self.device.write(b"SYSTem:ERRor?\r\n")
             self.device.flush()
+            time.sleep(0.05)
             sys_err = self.device.readline().decode("utf-8", errors="ignore").strip()
             print(f"[Agilent Verification] System Error Response: {sys_err}")
 
-            # If system returned 'No error', the command was parsed and executed
             if "+0" in sys_err or "No error" in sys_err:
                 print(f"[Agilent Verification] SUCCESS: State {state_num} applied & acknowledged.")
                 return True
@@ -138,9 +153,9 @@ class Agilent34970A:
                 return False
 
         all_channels = [
-            f"{VALVE_SLOT_PREFIX}{ch}" for ch in VALVE_CHANNELS.values()
+            f"{int(VALVE_SLOT_PREFIX)}{int(ch):02d}" for ch in VALVE_CHANNELS.values()
         ]
-        ch_str = ",".join(str(ch) for ch in all_channels)
+        ch_str = ",".join(all_channels)
         try:
             cmd = f"ROUTe:OPEn (@{ch_str})\r\n"
             self.device.write(cmd.encode("utf-8"))
@@ -191,12 +206,10 @@ class Agilent34970A:
             (9.80, 1.3e-3),  (9.90, 2.7e-3), (10.00, 7.5e-3)
         ]
 
-        # Exact match check
         for v, p in aim_sl_table_torr:
             if abs(volts - v) < 0.001:
                 return p, f"{p:.2e} Torr"
 
-        # Logarithmic interpolation between points
         for i in range(len(aim_sl_table_torr) - 1):
             v1, p1 = aim_sl_table_torr[i]
             v2, p2 = aim_sl_table_torr[i + 1]
