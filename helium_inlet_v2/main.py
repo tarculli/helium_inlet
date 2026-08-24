@@ -11,7 +11,7 @@ import uvicorn
 
 # Importing loop scripts
 from loops.io_loop import run_io_loop
-from automatic import run_auto_loop
+from loops.automatic import run_auto_loop
 
 # Local state manager
 import state 
