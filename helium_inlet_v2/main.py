@@ -9,14 +9,11 @@ and launches the web API for real-time instrument monitoring.
 import threading
 import uvicorn
 
-# Importing our loop scripts from /helium_inlet_v2/loops/
+# Importing loop scripts
 from loops.io_loop import run_io_loop
-# from loops.watchdog import run_watchdog 
-# from loops.state_machine import run_state_machine
+from automatic import run_auto_loop
 
-# Local script in /helium_inlet_v2 which serves as the centralized state manager 
-# and event logger (ie. the "brain" of our program), connecting our background 
-# hardware loops, command queue, and the web API
+# Local state manager
 import state 
 
 if __name__ == "__main__":
@@ -24,9 +21,7 @@ if __name__ == "__main__":
 
     # Start Background Loops
     threading.Thread(target=run_io_loop, daemon=True, name="IOLoop").start()
-    
-    # threading.Thread(target=run_watchdog, daemon=True, name="Watchdog").start()
-    # threading.Thread(target=run_state_machine, daemon=True, name="StateMachine").start()
+    threading.Thread(target=run_auto_loop, daemon=True, name="AutoLoop").start()
 
     # Launch Web Server
     uvicorn.run("web.server:app", host="0.0.0.0", port=8000, reload=False)
