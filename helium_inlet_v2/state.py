@@ -1,7 +1,7 @@
 import time
 from queue import Queue, Empty
 from config import MAX_LOG_ENTRIES
-from loops.automatic import automatic_runner
+from automatic import automatic_runner
 
 command_queue = Queue()
 system_logs = []

@@ -1,4 +1,5 @@
 import time
+from state import enqueue_command
 
 class AutomaticRunner:
     def __init__(self):
@@ -11,13 +12,13 @@ class AutomaticRunner:
     def start(self):
         self.enabled = True
         self.index = 0
-        self.last_step_time = 0.0  # Triggers immediately on start
+        self.last_step_time = 0.0  # Triggers step 1 immediately upon start
 
     def stop(self):
         self.enabled = False
 
     def step(self):
-        """Called inside background loop to evaluate time intervals."""
+        """Called by background thread to evaluate time intervals."""
         if not self.enabled:
             return
 
@@ -25,18 +26,17 @@ class AutomaticRunner:
         if now - self.last_step_time >= self.interval:
             target_state = self.sequence[self.index]
             
-            # Local import prevents circular dependency on initial startup
-            from state import enqueue_command
+            # Enqueue command through the standard state manager
             enqueue_command({"cmd": "SET_FLOW_STATE", "state": target_state})
             
             self.index = (self.index + 1) % len(self.sequence)
             self.last_step_time = now
 
-# Singleton instance for application access
+# Singleton instance
 automatic_runner = AutomaticRunner()
 
 def run_auto_loop():
-    """Thread target for main.py."""
+    """Background thread target to tick the auto sequence timer."""
     while True:
         automatic_runner.step()
         time.sleep(0.1)
