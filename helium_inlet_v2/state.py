@@ -15,10 +15,18 @@ telemetry_data = {
     "status": "Initializing...",
     "device": "Disconnected",
     "timestamp": "Waiting for data...",
+    "time_str": "00:00:00",  # Clean timestamp for plot X-axis
     "logs": system_logs,
     "mode": "MANUAL OVERRIDE",
     "control": {"flow_state": 0},
-    
+
+    # Numeric float keys for plotting engines
+    "ch101_val": None,
+    "ch102_val": None,
+    "ch103_val": None,
+    "ch104_val": None,
+
+    # Display string keys for UI cards
     "ch101": "---.-- °C", "ch102": "---.-- °C", "ch103": "---.-- °C", "ch104": "---.-- °C",
     "ch112": "---.-- V", "ch113": "---.-- V",
     "ch115_p": "---.--- Torr", "ch115_v": "---.-- V",

@@ -637,13 +637,16 @@
 
         function pushChartData(chart, label, values) {
             chart.data.labels.push(label);
-            values.forEach((v, idx) => chart.data.datasets[idx].data.push(v));
+            values.forEach((v, idx) => {
+                const numVal = (v !== null && v !== undefined && !isNaN(v)) ? Number(v) : null;
+                chart.data.datasets[idx].data.push(numVal);
+            });
 
             if (chart.data.labels.length > MAX_HISTORY) {
                 chart.data.labels.shift();
                 chart.data.datasets.forEach(ds => ds.data.shift());
             }
-            chart.update();
+            chart.update('none'); // Update without full recalculation animation
         }
 
         let lastLogCount = 0;
@@ -655,7 +658,7 @@
             const latestLog = logs[logs.length - 1];
             const entry = document.createElement("div");
             entry.className = "log-entry";
-            let tagClass = latestLog.level === "SUCCESS" ? "tag-success" : (latestLog.level === "WARN" ? "tag-warn" : "tag-info");
+            let tagClass = latestLog.level === "SUCCESS" ? "tag-success" : (latestLog.level === "WARN" ? "tag-warn" : (latestLog.level === "ERROR" ? "tag-danger" : "tag-info"));
             entry.innerHTML = `<span class="log-time">${latestLog.time}</span><span class="log-tag ${tagClass}">${latestLog.level}</span><span class="log-msg">${latestLog.msg}</span>`;
             box.appendChild(entry);
             box.scrollTop = box.scrollHeight;
@@ -666,7 +669,7 @@
             if (data.status) {
                 const sEl = document.getElementById("status");
                 sEl.innerText = data.status;
-                sEl.style.background = data.status === "CONNECTED" ? "#064e3b" : "#78350f";
+                sEl.style.background = data.status.includes("Connected") || data.status === "CONNECTED" ? "#064e3b" : "#78350f";
             }
             if (data.device) document.getElementById("device").innerText = data.device;
             if (data.timestamp) document.getElementById("timestamp").innerText = data.timestamp;
@@ -687,57 +690,71 @@
             if (data.ch119_p) document.getElementById("ch119_p").innerText = data.ch119_p;
             if (data.ch119_v) document.getElementById("ch119_v").innerText = data.ch119_v;
 
-            // Sync flow state visual if backend forces or returns state
-            if (typeof data.flow_state === "number" && data.flow_state !== currentState) {
-                applyVisualFlowState(data.flow_state);
+            // Sync visual flow state if updated by hardware
+            if (data.control && data.control.flow_state !== undefined) {
+                applyVisualFlowState(data.control.flow_state);
             }
 
-            if (data.chart_pressures && data.time_label) {
-                pushChartData(pressureChart, data.time_label, data.chart_pressures);
-            }
-            if (data.chart_temps && data.time_label) {
-                pushChartData(tempChart, data.time_label, data.chart_temps);
-            }
-
+            // Sync logs
             if (data.logs) renderLogs(data.logs);
+
+            // Time Label for Chart X-Axis
+            const timeLabel = data.time_str || (data.timestamp ? data.timestamp.replace('Last Update: ', '') : new Date().toLocaleTimeString('en-US', { hour12: false }));
+
+            // Update Temperature Chart with numeric float values
+            pushChartData(tempChart, timeLabel, [
+                data.ch101_val,
+                data.ch102_val,
+                data.ch103_val,
+                data.ch104_val
+            ]);
+
+            // Update Pressure Chart with numeric float values
+            pushChartData(pressureChart, timeLabel, [
+                data.ch115_p_val,
+                data.ch116_p_val,
+                data.ch119_p_val
+            ]);
         }
 
-        // WEBSOCKET CONNECTION
+        // WEBSOCKET CONNECTOR & AUTOMATIC RECONNECT
         function connectWebSocket() {
-            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsHost = window.location.host || 'localhost:8000';
-            ws = new WebSocket(`${wsProtocol}//${wsHost}/ws/telemetry`);
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/telemetry`;
 
-            ws.onopen = function() {
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                injectLocalLog("INFO", "WebSocket telemetry channel established.");
                 const sEl = document.getElementById("status");
                 sEl.innerText = "CONNECTED";
                 sEl.style.background = "#064e3b";
-                injectLocalLog("INFO", "Connected to hardware backend via WebSocket.");
             };
 
-            ws.onmessage = function(event) {
+            ws.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
                     updateTelemetry(data);
-                } catch(e) {
-                    console.error("Failed to parse telemetry JSON", e);
+                } catch (err) {
+                    console.error("Error parsing telemetry payload:", err);
                 }
             };
 
-            ws.onerror = function(err) {
-                console.error("WebSocket error:", err);
+            ws.onclose = () => {
+                const sEl = document.getElementById("status");
+                sEl.innerText = "DISCONNECTED - RETRYING";
+                sEl.style.background = "#78350f";
+                setTimeout(connectWebSocket, 3000); // Reconnect loop
             };
 
-            ws.onclose = function() {
-                const sEl = document.getElementById("status");
-                sEl.innerText = "DISCONNECTED";
-                sEl.style.background = "#78350f";
-                setTimeout(connectWebSocket, 3000);
+            ws.onerror = (err) => {
+                console.error("WebSocket connection error:", err);
+                ws.close();
             };
         }
 
+        // Initialize WebSocket connection on page startup
         window.addEventListener('DOMContentLoaded', () => {
-            applyVisualFlowState(0);
             connectWebSocket();
         });
     </script>

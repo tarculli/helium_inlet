@@ -78,3 +78,9 @@ def run_io_loop():
             state.telemetry_data["ch119_p_val"] = p119
             state.telemetry_data["ch119_p"] = p119_str
             state.telemetry_data["ch119_v"] = Agilent34970A.format_voltage(v_vals[5])
+
+# 5. Metadata Update
+        now_str = time.strftime('%H:%M:%S')
+        state.telemetry_data["time_str"] = now_str
+        state.telemetry_data["timestamp"] = f"Last Update: {now_str}"
+        state.telemetry_data["logs"] = list(state.system_logs)
