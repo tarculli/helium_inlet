@@ -646,7 +646,7 @@
                 chart.data.labels.shift();
                 chart.data.datasets.forEach(ds => ds.data.shift());
             }
-            chart.update('none'); // Update without full recalculation animation
+            chart.update('none');
         }
 
         let lastLogCount = 0;
@@ -665,7 +665,8 @@
         }
 
         // TELEMETRY HANDLER
-        if (data.status) {
+        function updateTelemetry(data) {
+            if (data.status) {
                 const sEl = document.getElementById("status");
                 sEl.innerText = data.status;
                 sEl.style.background = data.status.includes("Connected") || data.status === "CONNECTED" ? "#064e3b" : "#78350f";
@@ -673,13 +674,11 @@
             if (data.device) document.getElementById("device").innerText = data.device;
             if (data.timestamp) document.getElementById("timestamp").innerText = data.timestamp;
 
-            // Temperature Readouts
             if (data.ch101 !== undefined) document.getElementById("ch101").innerText = data.ch101;
             if (data.ch102 !== undefined) document.getElementById("ch102").innerText = data.ch102;
             if (data.ch103 !== undefined) document.getElementById("ch103").innerText = data.ch103;
             if (data.ch104 !== undefined) document.getElementById("ch104").innerText = data.ch104;
 
-            // Chamber & Trap Pressure / Voltage Readouts
             if (data.ch115_p !== undefined) document.getElementById("ch115_p").innerText = data.ch115_p;
             if (data.ch115_v !== undefined) document.getElementById("ch115_v").innerText = data.ch115_v;
             if (data.ch113 !== undefined) document.getElementById("ch113").innerText = data.ch113;
@@ -692,14 +691,14 @@
             if (data.ch119_p !== undefined) document.getElementById("ch119_p").innerText = data.ch119_p;
             if (data.ch119_v !== undefined) document.getElementById("ch119_v").innerText = data.ch119_v;
 
-            // 1. SYNC FLOW STATE (Updates Plumbing SVG diagram live from automatic.py)
+            // Sync SVG Pipe Diagram
             if (data.control && data.control.flow_state !== undefined) {
                 if (currentState !== data.control.flow_state) {
                     applyVisualFlowState(data.control.flow_state);
                 }
             }
 
-            // 2. SYNC SYSTEM MODE (Keeps UI toggle button in sync if changed by ESTOP or backend)
+            // Sync System Mode Buttons
             if (data.mode) {
                 const autoActive = data.mode.includes("AUTOMATIC");
                 if (isAutoMode !== autoActive) {
@@ -709,7 +708,7 @@
                 }
             }
 
-            // 3. PUSH LIVE CHART DATA
+            // Update Live Line Charts
             if (data.time_str) {
                 pushChartData(pressureChart, data.time_str, [
                     data.ch115_p_val,
@@ -725,7 +724,7 @@
                 ]);
             }
 
-            // 4. RENDER BACKEND LOGS
+            // Render Event Logs
             if (data.logs) {
                 renderLogs(data.logs);
             }
@@ -756,7 +755,6 @@
             ws.onclose = () => {
                 document.getElementById("status").innerText = "DISCONNECTED";
                 document.getElementById("status").style.background = "#78350f";
-                // Attempt automatic reconnect every 2 seconds
                 setTimeout(connectWebSocket, 2000);
             };
 
@@ -766,7 +764,6 @@
             };
         }
 
-        // Initialize WebSocket connection on page load
         window.addEventListener('DOMContentLoaded', connectWebSocket);
     </script>
 </body>
