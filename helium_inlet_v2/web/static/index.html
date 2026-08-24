@@ -277,7 +277,7 @@
                 
                 <!-- PLUMBING SCHEMATIC CARD -->
                 <div class="diagram-card">
-                    <h2 class="panel-title">Gas Selector Status</h2>
+                    <h2 class="panel-title">System Vacuum & Gas Flow Schematic</h2>
                     <div class="diagram-svg-container">
                         <svg viewBox="0 0 760 300" style="width: 100%; height: auto;">
                             <defs>
@@ -665,7 +665,8 @@
         }
 
         // TELEMETRY HANDLER
-        if (data.status) {
+        function updateTelemetry(data) {
+            if (data.status) {
                 const sEl = document.getElementById("status");
                 sEl.innerText = data.status;
                 sEl.style.background = data.status.includes("Connected") || data.status === "CONNECTED" ? "#064e3b" : "#78350f";
@@ -673,101 +674,89 @@
             if (data.device) document.getElementById("device").innerText = data.device;
             if (data.timestamp) document.getElementById("timestamp").innerText = data.timestamp;
 
-            // Temperature Readouts
-            if (data.ch101 !== undefined) document.getElementById("ch101").innerText = data.ch101;
-            if (data.ch102 !== undefined) document.getElementById("ch102").innerText = data.ch102;
-            if (data.ch103 !== undefined) document.getElementById("ch103").innerText = data.ch103;
-            if (data.ch104 !== undefined) document.getElementById("ch104").innerText = data.ch104;
+            if (data.ch101) document.getElementById("ch101").innerText = data.ch101;
+            if (data.ch102) document.getElementById("ch102").innerText = data.ch102;
+            if (data.ch103) document.getElementById("ch103").innerText = data.ch103;
+            if (data.ch104) document.getElementById("ch104").innerText = data.ch104;
 
-            // Chamber & Trap Pressure / Voltage Readouts
-            if (data.ch115_p !== undefined) document.getElementById("ch115_p").innerText = data.ch115_p;
-            if (data.ch115_v !== undefined) document.getElementById("ch115_v").innerText = data.ch115_v;
-            if (data.ch113 !== undefined) document.getElementById("ch113").innerText = data.ch113;
+            if (data.ch115_p) document.getElementById("ch115_p").innerText = data.ch115_p;
+            if (data.ch115_v) document.getElementById("ch115_v").innerText = data.ch115_v;
+            if (data.ch113) document.getElementById("ch113").innerText = data.ch113;
 
-            if (data.ch116_p !== undefined) document.getElementById("ch116_p").innerText = data.ch116_p;
-            if (data.ch116_v !== undefined) document.getElementById("ch116_v").innerText = data.ch116_v;
-            if (data.ch112 !== undefined) document.getElementById("ch112").innerText = data.ch112;
+            if (data.ch116_p) document.getElementById("ch116_p").innerText = data.ch116_p;
+            if (data.ch116_v) document.getElementById("ch116_v").innerText = data.ch116_v;
+            if (data.ch112) document.getElementById("ch112").innerText = data.ch112;
 
-            if (data.ch118_p !== undefined) document.getElementById("ch118_p").innerText = data.ch118_p;
-            if (data.ch119_p !== undefined) document.getElementById("ch119_p").innerText = data.ch119_p;
-            if (data.ch119_v !== undefined) document.getElementById("ch119_v").innerText = data.ch119_v;
+            if (data.ch119_p) document.getElementById("ch119_p").innerText = data.ch119_p;
+            if (data.ch119_v) document.getElementById("ch119_v").innerText = data.ch119_v;
 
-            // 1. SYNC FLOW STATE (Updates Plumbing SVG diagram live from automatic.py)
+            // Sync visual flow state if updated by hardware
             if (data.control && data.control.flow_state !== undefined) {
-                if (currentState !== data.control.flow_state) {
-                    applyVisualFlowState(data.control.flow_state);
-                }
+                applyVisualFlowState(data.control.flow_state);
             }
 
-            // 2. SYNC SYSTEM MODE (Keeps UI toggle button in sync if changed by ESTOP or backend)
-            if (data.mode) {
-                const autoActive = data.mode.includes("AUTOMATIC");
-                if (isAutoMode !== autoActive) {
-                    isAutoMode = autoActive;
-                    document.getElementById('btn_mode').innerText = isAutoMode ? "SWITCH TO MANUAL MODE" : "SWITCH TO AUTO MODE";
-                    document.getElementById('mode_status').innerText = `CURRENT: ${data.mode}`;
-                }
-            }
+            // Sync logs
+            if (data.logs) renderLogs(data.logs);
 
-            // 3. PUSH LIVE CHART DATA
-            if (data.time_str) {
-                pushChartData(pressureChart, data.time_str, [
-                    data.ch115_p_val,
-                    data.ch116_p_val,
-                    data.ch119_p_val
-                ]);
+            // Time Label for Chart X-Axis
+            const timeLabel = data.time_str || (data.timestamp ? data.timestamp.replace('Last Update: ', '') : new Date().toLocaleTimeString('en-US', { hour12: false }));
 
-                pushChartData(tempChart, data.time_str, [
-                    data.ch101_val,
-                    data.ch102_val,
-                    data.ch103_val,
-                    data.ch104_val
-                ]);
-            }
+            // Update Temperature Chart with numeric float values
+            pushChartData(tempChart, timeLabel, [
+                data.ch101_val,
+                data.ch102_val,
+                data.ch103_val,
+                data.ch104_val
+            ]);
 
-            // 4. RENDER BACKEND LOGS
-            if (data.logs) {
-                renderLogs(data.logs);
-            }
+            // Update Pressure Chart with numeric float values
+            pushChartData(pressureChart, timeLabel, [
+                data.ch115_p_val,
+                data.ch116_p_val,
+                data.ch119_p_val
+            ]);
         }
 
-        // WEBSOCKET LIFECYCLE MANAGEMENT
+        // WEBSOCKET CONNECTOR & AUTOMATIC RECONNECT
         function connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//${window.location.host}/ws`;
-            
+            const wsUrl = `${protocol}//${window.location.host}/ws/telemetry`;
+
             ws = new WebSocket(wsUrl);
 
             ws.onopen = () => {
-                document.getElementById("status").innerText = "CONNECTED";
-                document.getElementById("status").style.background = "#064e3b";
-                injectLocalLog("INFO", "Connected to telemetry server.");
+                injectLocalLog("INFO", "WebSocket telemetry channel established.");
+                const sEl = document.getElementById("status");
+                sEl.innerText = "CONNECTED";
+                sEl.style.background = "#064e3b";
             };
 
             ws.onmessage = (event) => {
                 try {
-                    const telemetry = JSON.parse(event.data);
-                    updateTelemetry(telemetry);
+                    const data = JSON.parse(event.data);
+                    updateTelemetry(data);
                 } catch (err) {
-                    console.error("Failed to parse telemetry JSON:", err);
+                    console.error("Error parsing telemetry payload:", err);
                 }
             };
 
             ws.onclose = () => {
-                document.getElementById("status").innerText = "DISCONNECTED";
-                document.getElementById("status").style.background = "#78350f";
-                // Attempt automatic reconnect every 2 seconds
-                setTimeout(connectWebSocket, 2000);
+                const sEl = document.getElementById("status");
+                sEl.innerText = "DISCONNECTED - RETRYING";
+                sEl.style.background = "#78350f";
+                setTimeout(connectWebSocket, 3000); // Reconnect loop
             };
 
             ws.onerror = (err) => {
-                console.error("WebSocket error encountered:", err);
+                console.error("WebSocket connection error:", err);
                 ws.close();
             };
         }
 
-        // Initialize WebSocket connection on page load
-        window.addEventListener('DOMContentLoaded', connectWebSocket);
+        // Initialize WebSocket connection on page startup
+        window.addEventListener('DOMContentLoaded', () => {
+            connectWebSocket();
+        });
     </script>
 </body>
 </html>
