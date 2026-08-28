@@ -227,7 +227,8 @@
         .btn-warning { background: #ca8a04; color: #020617; border: 1px solid #eab308; }
         .btn-warning:hover { background: #eab308; }
 
-        .pipe { stroke-width: 4; fill: none; transition: stroke 0.3s ease; }
+        .pipe { stroke-width: 4; fill: none; transition: stroke 0.3s ease; stroke-linecap: round; }
+        .pipe-inner { stroke-width: 3.5; fill: none; transition: stroke 0.3s ease; stroke-linecap: round; }
     </style>
 </head>
 <body>
@@ -274,7 +275,7 @@
                 
                 <!-- PLUMBING SCHEMATIC -->
                 <div class="diagram-card">
-                    <h2 class="panel-title">Gas Selector Status</h2>
+                    <h2 class="panel-title">Gas Selector Plumbing Diagram</h2>
                     <div class="diagram-svg-container">
                         <svg viewBox="0 0 760 300" style="width: 100%; height: auto;">
                             <defs>
@@ -283,30 +284,46 @@
                                 </marker>
                             </defs>
 
-                            <path id="pipe_sample_in" class="pipe" d="M 100 150 L 130 150" stroke="var(--pipe-off)"/>
-                            <path id="pipe_sample_a" class="pipe" d="M 130 150 L 130 70 L 220 70" stroke="var(--pipe-off)"/>
-                            <path id="pipe_sample_b" class="pipe" d="M 130 150 L 130 230 L 220 230" stroke="var(--pipe-off)"/>
-                            <path id="pipe_trap_a_waste" class="pipe" d="M 330 70 L 410 70 L 410 150" stroke="var(--pipe-off)"/>
-                            <path id="pipe_trap_b_waste" class="pipe" d="M 330 230 L 410 230 L 410 150" stroke="var(--pipe-off)"/>
-                            <path id="pipe_waste_out" class="pipe" d="M 410 150 L 450 150" stroke="var(--pipe-off)" marker-end="url(#arrow)"/>
-                            <path id="pipe_trap_a_ms" class="pipe" d="M 275 40 L 275 25 L 580 25 L 580 150" stroke="var(--pipe-off)"/>
-                            <path id="pipe_trap_b_ms" class="pipe" d="M 275 260 L 275 275 L 580 275 L 580 150" stroke="var(--pipe-off)"/>
-                            <path id="pipe_ms_out" class="pipe" d="M 580 150 L 650 150" stroke="var(--pipe-off)" marker-end="url(#arrow)"/>
+                            <!-- External Pipes -->
+                            <path id="pipe_sample_in" class="pipe" d="M 100 150 L 175 150" stroke="var(--pipe-off)" marker-end="url(#arrow)"/>
+                            <path id="pipe_trap_a_in" class="pipe" d="M 220 105 L 220 65" stroke="var(--pipe-off)"/>
+                            <path id="pipe_trap_b_in" class="pipe" d="M 220 195 L 220 235" stroke="var(--pipe-off)"/>
+                            <path id="pipe_waste_out" class="pipe" d="M 265 150 L 340 150" stroke="var(--pipe-off)" marker-end="url(#arrow)"/>
+                            
+                            <path id="pipe_trap_a_ms" class="pipe" d="M 270 42.5 L 560 42.5 L 560 150" stroke="var(--pipe-off)"/>
+                            <path id="pipe_trap_b_ms" class="pipe" d="M 270 257.5 L 560 257.5 L 560 150" stroke="var(--pipe-off)"/>
+                            <path id="pipe_ms_out" class="pipe" d="M 560 150 L 640 150" stroke="var(--pipe-off)" marker-end="url(#arrow)"/>
 
-                            <rect x="220" y="40" width="110" height="60" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
-                            <text x="275" y="75" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">Trap A</text>
+                            <!-- Central Gas Selector Valve Circle -->
+                            <circle cx="220" cy="150" r="45" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
+                            
+                            <!-- Internal Valve Flow Channels (State 1 vs State 2) -->
+                            <path id="pipe_valve_smp_a" class="pipe-inner" d="M 175 150 Q 195 130 220 105" stroke="var(--pipe-off)"/>
+                            <path id="pipe_valve_b_wst" class="pipe-inner" d="M 220 195 Q 245 170 265 150" stroke="var(--pipe-off)"/>
+                            <path id="pipe_valve_smp_b" class="pipe-inner" d="M 175 150 Q 195 170 220 195" stroke="var(--pipe-off)"/>
+                            <path id="pipe_valve_a_wst" class="pipe-inner" d="M 220 105 Q 245 130 265 150" stroke="var(--pipe-off)"/>
 
-                            <rect x="220" y="200" width="110" height="60" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
-                            <text x="275" y="235" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">Trap B</text>
+                            <!-- Valve Port Markers -->
+                            <circle cx="175" cy="150" r="3" fill="#cbd5e1"/>
+                            <circle cx="220" cy="105" r="3" fill="#cbd5e1"/>
+                            <circle cx="265" cy="150" r="3" fill="#cbd5e1"/>
+                            <circle cx="220" cy="195" r="3" fill="#cbd5e1"/>
 
-                            <rect x="10" y="130" width="90" height="40" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
-                            <text x="55" y="154" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">SAMPLE GAS</text>
+                            <!-- System Units & Hardware Labels -->
+                            <rect x="15" y="130" width="85" height="40" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
+                            <text x="57" y="154" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">SAMPLE</text>
 
-                            <rect x="450" y="130" width="85" height="40" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
-                            <text x="492" y="154" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">WASTE</text>
+                            <rect x="170" y="20" width="100" height="45" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
+                            <text x="220" y="47" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">Trap A</text>
 
-                            <rect x="650" y="130" width="60" height="40" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
-                            <text x="680" y="154" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">MS</text>
+                            <rect x="170" y="235" width="100" height="45" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
+                            <text x="220" y="262" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">Trap B</text>
+
+                            <rect x="340" y="130" width="85" height="40" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
+                            <text x="382" y="154" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">WASTE</text>
+
+                            <rect x="640" y="130" width="60" height="40" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
+                            <text x="670" y="154" text-anchor="middle" font-size="11" font-weight="bold" fill="#f8fafc">MS</text>
                         </svg>
                     </div>
 
@@ -439,66 +456,92 @@
             }
 
             const pSampleIn = document.getElementById('pipe_sample_in');
-            const pSampleA = document.getElementById('pipe_sample_a');
-            const pSampleB = document.getElementById('pipe_sample_b');
-            const pTrapAWaste = document.getElementById('pipe_trap_a_waste');
-            const pTrapBWaste = document.getElementById('pipe_trap_b_waste');
+            const pValveSmpA = document.getElementById('pipe_valve_smp_a');
+            const pValveBWst = document.getElementById('pipe_valve_b_wst');
+            const pValveSmpB = document.getElementById('pipe_valve_smp_b');
+            const pValveAWst = document.getElementById('pipe_valve_a_wst');
+            const pTrapAIn = document.getElementById('pipe_trap_a_in');
+            const pTrapBIn = document.getElementById('pipe_trap_b_in');
             const pWasteOut = document.getElementById('pipe_waste_out');
-            
-            document.getElementById('pipe_trap_a_ms').setAttribute('stroke', pipeOff);
-            document.getElementById('pipe_trap_b_ms').setAttribute('stroke', pipeOff);
-            document.getElementById('pipe_ms_out').setAttribute('stroke', pipeOff);
+            const pTrapAMs = document.getElementById('pipe_trap_a_ms');
+            const pTrapBMs = document.getElementById('pipe_trap_b_ms');
+            const pMsOut = document.getElementById('pipe_ms_out');
 
             let logDesc = "";
 
             switch (stateNum) {
                 case 0:
                     pSampleIn.setAttribute('stroke', pipeOff);
-                    pSampleA.setAttribute('stroke', pipeOff);
-                    pSampleB.setAttribute('stroke', pipeOff);
-                    pTrapAWaste.setAttribute('stroke', pipeOff);
-                    pTrapBWaste.setAttribute('stroke', pipeOff);
+                    pValveSmpA.setAttribute('stroke', pipeOff);
+                    pValveBWst.setAttribute('stroke', pipeOff);
+                    pValveSmpB.setAttribute('stroke', pipeOff);
+                    pValveAWst.setAttribute('stroke', pipeOff);
+                    pTrapAIn.setAttribute('stroke', pipeOff);
+                    pTrapBIn.setAttribute('stroke', pipeOff);
                     pWasteOut.setAttribute('stroke', pipeOff);
+                    pTrapAMs.setAttribute('stroke', pipeOff);
+                    pTrapBMs.setAttribute('stroke', pipeOff);
+                    pMsOut.setAttribute('stroke', pipeOff);
                     logDesc = "State 0: All valves closed / isolated.";
                     break;
 
                 case 1:
                     pSampleIn.setAttribute('stroke', pipeOn);
-                    pSampleA.setAttribute('stroke', pipeOn);
-                    pSampleB.setAttribute('stroke', pipeOff);
-                    pTrapAWaste.setAttribute('stroke', pipeOff);
-                    pTrapBWaste.setAttribute('stroke', pipeOn);
+                    pValveSmpA.setAttribute('stroke', pipeOn);
+                    pValveBWst.setAttribute('stroke', pipeOn);
+                    pValveSmpB.setAttribute('stroke', pipeOff);
+                    pValveAWst.setAttribute('stroke', pipeOff);
+                    pTrapAIn.setAttribute('stroke', pipeOn);
+                    pTrapBIn.setAttribute('stroke', pipeOn);
                     pWasteOut.setAttribute('stroke', pipeOn);
+                    pTrapAMs.setAttribute('stroke', pipeOn);
+                    pTrapBMs.setAttribute('stroke', pipeOff);
+                    pMsOut.setAttribute('stroke', pipeOn);
                     logDesc = "State 1: Sample -> Trap A | Trap B -> Waste";
                     break;
 
                 case 2:
                     pSampleIn.setAttribute('stroke', pipeOn);
-                    pSampleA.setAttribute('stroke', pipeOff);
-                    pSampleB.setAttribute('stroke', pipeOn);
-                    pTrapAWaste.setAttribute('stroke', pipeOn);
-                    pTrapBWaste.setAttribute('stroke', pipeOff);
+                    pValveSmpA.setAttribute('stroke', pipeOff);
+                    pValveBWst.setAttribute('stroke', pipeOff);
+                    pValveSmpB.setAttribute('stroke', pipeOn);
+                    pValveAWst.setAttribute('stroke', pipeOn);
+                    pTrapAIn.setAttribute('stroke', pipeOn);
+                    pTrapBIn.setAttribute('stroke', pipeOn);
                     pWasteOut.setAttribute('stroke', pipeOn);
+                    pTrapAMs.setAttribute('stroke', pipeOff);
+                    pTrapBMs.setAttribute('stroke', pipeOn);
+                    pMsOut.setAttribute('stroke', pipeOn);
                     logDesc = "State 2: Sample -> Trap B | Trap A -> Waste";
                     break;
 
                 case 3:
                     pSampleIn.setAttribute('stroke', pipeOn);
-                    pSampleA.setAttribute('stroke', pipeOn);
-                    pSampleB.setAttribute('stroke', pipeOff);
-                    pTrapAWaste.setAttribute('stroke', pipeOff);
-                    pTrapBWaste.setAttribute('stroke', pipeOff);
+                    pValveSmpA.setAttribute('stroke', pipeOn);
+                    pValveBWst.setAttribute('stroke', pipeOff);
+                    pValveSmpB.setAttribute('stroke', pipeOff);
+                    pValveAWst.setAttribute('stroke', pipeOff);
+                    pTrapAIn.setAttribute('stroke', pipeOn);
+                    pTrapBIn.setAttribute('stroke', pipeOff);
                     pWasteOut.setAttribute('stroke', pipeOff);
+                    pTrapAMs.setAttribute('stroke', pipeOn);
+                    pTrapBMs.setAttribute('stroke', pipeOff);
+                    pMsOut.setAttribute('stroke', pipeOn);
                     logDesc = "State 3: Sample -> Trap A | No Waste";
                     break;
 
                 case 4:
                     pSampleIn.setAttribute('stroke', pipeOn);
-                    pSampleA.setAttribute('stroke', pipeOff);
-                    pSampleB.setAttribute('stroke', pipeOn);
-                    pTrapAWaste.setAttribute('stroke', pipeOff);
-                    pTrapBWaste.setAttribute('stroke', pipeOff);
+                    pValveSmpA.setAttribute('stroke', pipeOff);
+                    pValveBWst.setAttribute('stroke', pipeOff);
+                    pValveSmpB.setAttribute('stroke', pipeOn);
+                    pValveAWst.setAttribute('stroke', pipeOff);
+                    pTrapAIn.setAttribute('stroke', pipeOff);
+                    pTrapBIn.setAttribute('stroke', pipeOn);
                     pWasteOut.setAttribute('stroke', pipeOff);
+                    pTrapAMs.setAttribute('stroke', pipeOff);
+                    pTrapBMs.setAttribute('stroke', pipeOn);
+                    pMsOut.setAttribute('stroke', pipeOn);
                     logDesc = "State 4: Sample -> Trap B | No Waste";
                     break;
             }
