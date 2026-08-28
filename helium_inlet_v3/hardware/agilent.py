@@ -1,28 +1,38 @@
-'''
+"""
+hardware/agilent.py - Agilent 34970A Hardware Driver & Signal Processing
+
 This script contains the functions needed to communicate and interact with the Agilent 34970A,
 including specific pressure conversion matrices for the instrument's vacuum gauges.
-'''
+"""
 
-import serial
 import math
 import time
+import serial
+
 from config import (
-    AGILENT_PORT,
     AGILENT_BAUD,
-    TC_CHANNELS,
-    VOLT_CHANNELS,
-    VALVE_SLOT_PREFIX,
-    VALVE_CHANNELS,
+    AGILENT_PORT,
     STATE_VALVE_MAP,
+    TC_CHANNELS,
+    VALVE_CHANNELS,
+    VALVE_SLOT_PREFIX,
+    VOLT_CHANNELS,
 )
 
 
 class Agilent34970A:
+    """Hardware Abstraction Layer (HAL) for the Agilent 34970A Data Acquisition Mainframe.
+
+    Handles low-level PySerial communications, SCPI command formatting, multiplexer 
+    relay switching, and analog voltage-to-pressure signal transformations.
+    """
+
     def __init__(self):
         self.device = None
         self.connected = False
 
     def connect(self):
+        """Establishes serial connection to Agilent mainframe and verifies identity string."""
         try:
             self.device = serial.Serial(
                 port=AGILENT_PORT,
@@ -34,41 +44,58 @@ class Agilent34970A:
             )
             self.device.reset_input_buffer()
             self.device.reset_output_buffer()
+
+            # Clear status registers (*CLS) and query device identity (*IDN?)
             self.device.write(b"*CLS\r\n")
             self.device.write(b"*IDN?\r\n")
             time.sleep(0.1)
+
             idn = self.device.readline().decode("utf-8", errors="ignore").strip()
             self.connected = bool(idn)
             return idn
-        except Exception:
+        except Exception as e:
+            print(f"[Agilent Serial Error] Connection failed: {e}")
             self.connected = False
             return None
 
     def read_all(self):
+        """Queries DMM for thermocouple temperatures and analog DC voltages.
+
+        Returns:
+            tuple: (tc_vals, v_vals) lists of float readings, or (None, None) on serial error.
+        """
         if not self.connected or not self.device:
             return None, None
 
         try:
             self.device.reset_input_buffer()
 
-            # Read Thermocouples
-            self.device.write(f"MEASure:TEMPerature? TC,T,DEF,(@{TC_CHANNELS})\r\n".encode("utf-8"))
+            # 1. Query Thermocouples (Channels 101-104)
+            self.device.write(
+                f"MEASure:TEMPerature? TC,T,DEF,(@{TC_CHANNELS})\r\n".encode("utf-8")
+            )
             time.sleep(0.1)
             raw_tc = self.device.readline().decode("utf-8", errors="ignore").strip()
 
-            # Read Voltages
-            self.device.write(f"MEASure:VOLTage:DC? AUTO,DEF,(@{VOLT_CHANNELS})\r\n".encode("utf-8"))
+            # 2. Query DC Voltages (Channels 112, 113, 115, 116, 118, 119)
+            self.device.write(
+                f"MEASure:VOLTage:DC? AUTO,DEF,(@{VOLT_CHANNELS})\r\n".encode("utf-8")
+            )
             time.sleep(0.1)
             raw_volt = self.device.readline().decode("utf-8", errors="ignore").strip()
 
+            # Parse comma-separated string responses into float arrays
             tc_vals = [float(x) for x in raw_tc.split(",") if x.strip()] if raw_tc else []
             v_vals = [float(x) for x in raw_volt.split(",") if x.strip()] if raw_volt else []
+
             return tc_vals, v_vals
-        except Exception:
+        except Exception as e:
+            print(f"[Agilent Serial Error] Read failed: {e}")
             self.connected = False
             return None, None
 
     def set_flow_state(self, state_num: int) -> bool:
+        """Energizes/de-energizes multiplexer relays to match target valve flow state."""
         if not self.connected or not self.device:
             return False
 
@@ -77,26 +104,31 @@ class Agilent34970A:
 
         active_valves = STATE_VALVE_MAP[state_num]
 
-        # Convert valve names to exact 3-digit channel integers (e.g., 200 + 8 = 208)
+        # Map valve names to 3-digit hardware channels (e.g., Slot 2 + Ch 8 = 208)
         all_channels = {
             v: str(VALVE_SLOT_PREFIX + int(ch))
             for v, ch in VALVE_CHANNELS.items()
         }
 
+        # Segregate channels to close (energize OPEN) vs open (depressurize CLOSED)
         close_list = [all_channels[v] for v in active_valves if v in all_channels]
         open_list = [ch for ch in all_channels.values() if ch not in close_list]
 
         try:
             self.device.reset_input_buffer()
 
-            # Open non-active channels (depressurize unused paths)
+            # Open non-active valve relays first to prevent safe over-pressurization
             if open_list:
-                self.device.write(f"ROUTe:OPEn (@{','.join(open_list)})\r\n".encode("utf-8"))
+                self.device.write(
+                    f"ROUTe:OPEn (@{','.join(open_list)})\r\n".encode("utf-8")
+                )
                 time.sleep(0.1)
 
-            # Close active channels (pressurize active path)
+            # Close active valve relays to energize selected path
             if close_list:
-                self.device.write(f"ROUTe:CLOSe (@{','.join(close_list)})\r\n".encode("utf-8"))
+                self.device.write(
+                    f"ROUTe:CLOSe (@{','.join(close_list)})\r\n".encode("utf-8")
+                )
                 time.sleep(0.1)
 
             return True
@@ -106,33 +138,58 @@ class Agilent34970A:
             return False
 
     def emergency_stop(self) -> bool:
+        """Immediately opens all valve relay channels to return system to safe isolated state."""
         if not self.connected or not self.device:
             return False
 
-        all_channels = [str(VALVE_SLOT_PREFIX + int(ch)) for ch in VALVE_CHANNELS.values()]
+        all_channels = [
+            str(VALVE_SLOT_PREFIX + int(ch)) for ch in VALVE_CHANNELS.values()
+        ]
         try:
-            self.device.write(f"ROUTe:OPEn (@{','.join(all_channels)})\r\n".encode("utf-8"))
+            self.device.write(
+                f"ROUTe:OPEn (@{','.join(all_channels)})\r\n".encode("utf-8")
+            )
             return True
-        except Exception:
+        except Exception as e:
+            print(f"[Agilent Hardware Error] ESTOP failed: {e}")
             self.connected = False
             return False
+
+    # ==========================================================================
+    # DISPLAY FORMATTING HELPERS
+    # ==========================================================================
     @staticmethod
     def format_temp(val):
-        if val is None: return "---.-- °C"
-        if val > 9e9: return "OPEN / NC"
+        """Formats raw float temperature into UI card display format."""
+        if val is None:
+            return "---.-- °C"
+        if val > 9e9:  # Agilent SCPI error value for open thermocouple circuit
+            return "OPEN / NC"
         return f"{val:.2f} °C"
 
     @staticmethod
     def format_voltage(volts):
-        if volts is None: return "---.-- V"
+        """Formats raw float voltage into standard UI display format."""
+        if volts is None:
+            return "---.-- V"
         return f"{volts:.2f} V"
 
+    # ==========================================================================
+    # VACUUM GAUGE PRESSURE CONVERSION MATRICES
+    # ==========================================================================
     @staticmethod
     def calc_chamber_aim_sl_pressure(volts):
-        if volts is None: return None, "---.--- Torr"
-        if volts < 2.00: return 7.5e-9, "< 7.5e-09 Torr"
-        if volts > 10.00: return 7.5e-3, "> 7.5e-03 Torr"
-        
+        """Calculates vacuum pressure for Chamber Inverted Magnetron (Edwards AIM-SL).
+
+        Uses logarithmic linear interpolation across standard manufacturer curve points.
+        """
+        if volts is None:
+            return None, "---.--- Torr"
+        if volts < 2.00:
+            return 7.5e-9, "< 7.5e-09 Torr"
+        if volts > 10.00:
+            return 7.5e-3, "> 7.5e-03 Torr"
+
         aim_sl_table_torr = [
             (2.00, 7.5e-9), (2.50, 1.8e-8), (3.00, 4.4e-8), (3.20, 6.1e-8),
             (3.40, 8.3e-8), (3.60, 1.1e-7), (3.80, 1.6e-7), (4.00, 2.2e-7),
@@ -143,33 +200,55 @@ class Agilent34970A:
             (7.40, 1.3e-5), (7.60, 1.5e-5), (7.80, 1.8e-5), (8.00, 2.2e-5),
             (8.20, 2.6e-5), (8.40, 3.2e-5), (8.60, 4.3e-5), (8.80, 5.9e-5),
             (9.00, 9.0e-5), (9.20, 1.4e-4), (9.40, 2.5e-4), (9.60, 5.0e-4),
-            (9.80, 1.3e-3), (9.90, 2.7e-3), (10.00, 7.5e-3)
+            (9.80, 1.3e-3), (9.90, 2.7e-3), (10.00, 7.5e-3),
         ]
+
+        # Exact voltage match lookup
         for v, p in aim_sl_table_torr:
-            if abs(volts - v) < 0.001: return p, f"{p:.2e} Torr"
+            if abs(volts - v) < 0.001:
+                return p, f"{p:.2e} Torr"
+
+        # Piecewise log10 interpolation between bracketed calibration points
         for i in range(len(aim_sl_table_torr) - 1):
             v1, p1 = aim_sl_table_torr[i]
             v2, p2 = aim_sl_table_torr[i + 1]
             if v1 < volts < v2:
-                log_p = math.log10(p1) + (volts - v1) * ((math.log10(p2) - math.log10(p1)) / (v2 - v1))
+                log_p = math.log10(p1) + (volts - v1) * (
+                    (math.log10(p2) - math.log10(p1)) / (v2 - v1)
+                )
                 pressure = 10**log_p
                 return pressure, f"{pressure:.2e} Torr"
+
         return None, "Error"
 
     @staticmethod
     def calc_trap_penning_pressure(volts):
-        if volts is None or volts < 0.5: return None, "---.--- Torr"
+        """Calculates vacuum pressure for Trap Penning High Vacuum Gauge.
+
+        Formula: P_Torr = (10^(0.875 * V - 10.75)) * 0.750062
+        """
+        if volts is None or volts < 0.5:
+            return None, "---.--- Torr"
         try:
             pressure_torr = (10 ** ((volts * 0.875) - 10.75)) * 0.750062
             return pressure_torr, f"{pressure_torr:.2e} Torr"
-        except Exception: return None, "Error"
+        except Exception:
+            return None, "Error"
 
     @staticmethod
     def calc_convectron_375_pressure(volts):
-        if volts is None: return None, "---.--- Torr"
-        if volts < 0.0: return 1.0e-4, "< 1.00e-04 Torr"
-        if volts > 7.1: return 1000.0, "> 1000 Torr"
+        """Calculates vacuum pressure for Trap LoVac Convectron Gauge (Granville-Phillips 375).
+
+        Formula: P_Torr = 10^(V - 4)
+        """
+        if volts is None:
+            return None, "---.--- Torr"
+        if volts < 0.0:
+            return 1.0e-4, "< 1.00e-04 Torr"
+        if volts > 7.1:
+            return 1000.0, "> 1000 Torr"
         try:
             pressure_torr = 10 ** (volts - 4)
             return pressure_torr, f"{pressure_torr:.2e} Torr"
-        except Exception: return None, "Error"
+        except Exception:
+            return None, "Error"
