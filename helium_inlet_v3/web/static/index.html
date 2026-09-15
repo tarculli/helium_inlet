@@ -166,7 +166,7 @@
 
         .flow-controls {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
+            grid-template-columns: repeat(7, 1fr);
             gap: 8px;
             margin-top: 12px;
         }
@@ -333,6 +333,8 @@
                         <button id="btn_state_2" class="state-btn" onclick="setFlowState(2)">State 2<br>Smp→B | A→Wst</button>
                         <button id="btn_state_3" class="state-btn" onclick="setFlowState(3)">State 3<br>Smp→A | No Wst</button>
                         <button id="btn_state_4" class="state-btn" onclick="setFlowState(4)">State 4<br>Smp→B | No Wst</button>
+                        <button id="btn_state_5" class="state-btn" onclick="setFlowState(5)">State 5<br>Trp A→Wst | No Smp</button>
+                        <button id="btn_state_6" class="state-btn" onclick="setFlowState(6)">State 6<br>Trp B→Wst | No Smp</button>
                     </div>
                 </div>
 
@@ -450,7 +452,7 @@
         function applyVisualFlowState(stateNum) {
             currentState = stateNum;
 
-            for (let i = 0; i <= 4; i++) {
+            for (let i = 0; i <= 6; i++) {
                 const btn = document.getElementById(`btn_state_${i}`);
                 if (btn) btn.classList.toggle('active', i === stateNum);
             }
@@ -543,6 +545,36 @@
                     pTrapBMs.setAttribute('stroke', pipeOn);
                     pMsOut.setAttribute('stroke', pipeOn);
                     logDesc = "State 4: Sample -> Trap B | No Waste";
+                    break;
+
+                case 5:
+                    pSampleIn.setAttribute('stroke', pipeOff);
+                    pValveSmpA.setAttribute('stroke', pipeOff);
+                    pValveBWst.setAttribute('stroke', pipeOff);
+                    pValveSmpB.setAttribute('stroke', pipeOff);
+                    pValveAWst.setAttribute('stroke', pipeOn);
+                    pTrapAIn.setAttribute('stroke', pipeOn);
+                    pTrapBIn.setAttribute('stroke', pipeOff);
+                    pWasteOut.setAttribute('stroke', pipeOn);
+                    pTrapAMs.setAttribute('stroke', pipeOff);
+                    pTrapBMs.setAttribute('stroke', pipeOff);
+                    pMsOut.setAttribute('stroke', pipeOff);
+                    logDesc = "State 5: Trap A -> Waste | No Sample In";
+                    break;
+
+                case 6:
+                    pSampleIn.setAttribute('stroke', pipeOff);
+                    pValveSmpA.setAttribute('stroke', pipeOff);
+                    pValveBWst.setAttribute('stroke', pipeOn);
+                    pValveSmpB.setAttribute('stroke', pipeOff);
+                    pValveAWst.setAttribute('stroke', pipeOff);
+                    pTrapAIn.setAttribute('stroke', pipeOff);
+                    pTrapBIn.setAttribute('stroke', pipeOn);
+                    pWasteOut.setAttribute('stroke', pipeOn);
+                    pTrapAMs.setAttribute('stroke', pipeOff);
+                    pTrapBMs.setAttribute('stroke', pipeOff);
+                    pMsOut.setAttribute('stroke', pipeOff);
+                    logDesc = "State 6: Trap B -> Waste | No Sample In";
                     break;
             }
 

@@ -40,6 +40,8 @@ STATE_VALVE_MAP = {
     2: ["V2", "V3"],        # State 2: Sample -> Trap B | Trap A -> Waste
     3: ["V1", "V3", "V4"],  # State 3: Sample -> Trap A | No Waste
     4: ["V1", "V2", "V3"],  # State 4: Sample -> Trap B | No Waste
+    5: ["V1", "V2", "V4"],  # State 5: Trap A -> Waste  | No Sample In
+    6: ["V2", "V3", "V4"],  # State 6: Trap B -> Waste  | No Sample In
 }
 
 

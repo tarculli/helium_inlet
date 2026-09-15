@@ -5,6 +5,8 @@ This module executes automated, time-based valve state sequences. It runs as a
 background daemon thread, monitoring the global system mode in state.py. 
 When set to "AUTOMATIC ACQUISITION", it steps through predefined flow states 
 by dispatching commands into state.command_queue without blocking hardware I/O.
+
+THIS WILL BE MODIFIED TO REFLECT THE CYCLE BETWEEN ENGINE A AND B
 """
 
 import time

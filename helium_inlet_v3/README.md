@@ -102,8 +102,7 @@ state.py
 config.py
   - Centralized repository for system-wide configuration parameters.
   - Hardware Comms: Serial port paths (`/dev/ttyUSB0`), baud rates, and scan channel assignments.
-  - Valve Matrix: Maps physical relay channels (Clippard card) to operational 
-    flow states (State 0: Depressurized/Isolated, States 1-4: Active flow paths).
+  - Valve Matrix: Maps physical relay channels (Clippard card) to operational flow states (State 0: Depressurized/Isolated, States 1-6: Active flow paths).
   - System Timings: Polling loops, watchdog refresh rate, and WebSocket push intervals.
   - Safety Limits: Maximum temperature and pressure guardrail thresholds.
 
