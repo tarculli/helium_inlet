@@ -131,6 +131,21 @@ loops/automatic.py
   - Uses responsive sub-interval checking to allow immediate aborts on Emergency 
     Stop (E-STOP) or mode toggles.
 
+  Automatic loop sequence (pseudo 10 second changeover for now...):
+    - Startup sequence logic: if Trap A is colder than X Kelvin (~30K? we add COLD_POINT_TEMP = ... in config.py), begin cycle between FS1 and FS2, else, start with...
+    
+    1) Trap A is cooling and pumping to waste – Flow State 5 (until T < threshold)
+
+    Then... 
+
+    2) Trap A is cold and receiving sample gas, Trap B is cooling and pumping to waste – Flow State 1 (need to add roughing subsequence later)
+
+    3) If Trap A has been receiving sample gas for more than MAX_SAMPLING_TIME, then switch to Trap B if it is cold, otherwise set to FS6 so B continues to waste but A is isolated?
+
+    4) Trap B is cold and receiving sample gas, Trap A is thawing and pumpinh to waste – Flow State 2 (need to add roughing subsequence later)
+
+    5) Similar switching logic as above...
+
 web/server.py
   - FastAPI Web Application server interface.
   - Serves static dashboard assets (`index.html`).

@@ -63,3 +63,7 @@ MAX_CHAMBER_PRESSURE_TORR = 1e-3
 
 # Maximum rolling logs retained in state.py memory buffer
 MAX_LOG_ENTRIES = 50
+
+# Auto-sequence Thresholds
+COLD_POINT_TEMP = 28 # in Celsius
+MAX_SAMPLING_TIME = 10 # in Seconds

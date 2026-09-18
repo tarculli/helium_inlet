@@ -1,55 +1,141 @@
 """
 loops/automatic.py - Automated Sequence Engine
 
-This module executes automated, time-based valve state sequences. It runs as a 
-background daemon thread, monitoring the global system mode in state.py. 
-When set to "AUTOMATIC ACQUISITION", it steps through predefined flow states 
-by dispatching commands into state.command_queue without blocking hardware I/O.
-
-THIS WILL BE MODIFIED TO REFLECT THE CYCLE BETWEEN ENGINE A AND B
+Executes temperature- and time-dependent valve flow state sequences.
+Runs as a background thread monitoring state.telemetry_data["mode"].
 """
 
 import time
 import state
 
-# Sequence of valve flow states to cycle through automatically
-FLOW_STATES = [1, 2, 3, 4, 0]
+# Fallback defaults if not present in config.py
+try:
+    import config
+    COLD_POINT_TEMP = getattr(config, "COLD_POINT_TEMP", 30.0)  # Kelvin or °C threshold
+    MAX_SAMPLING_TIME = getattr(config, "MAX_SAMPLING_TIME", 10.0)  # Seconds
+except ImportError:
+    print("config.py import error! ...do not run!")
+    COLD_POINT_TEMP = 30.0
+    MAX_SAMPLING_TIME = 10.0
 
-# Dwell time (seconds) to hold each flow state before advancing to the next
-STEP_INTERVAL_SEC = 5.0
+POLL_INTERVAL_SEC = 0.1  # Responsive check rate for aborts/mode changes
+
+
+def get_trap_temp(trap_id: str) -> float:
+    """
+    Helper to fetch temperature for Trap A or Trap B from telemetry.
+    Adjust key lookup according to actual telemetry mappings.
+    """
+    telemetry = state.telemetry_data
+    if trap_id == "A":
+        # Check standard channel or direct temp key (e.g., ch104 / temp_A)
+        return float(telemetry.get("temp_A", telemetry.get("ch104", 999.0)))
+    elif trap_id == "B":
+        return float(telemetry.get("temp_B", telemetry.get("ch101", 999.0)))
+    return 999.0
+
+
+def set_system_flow_state(flow_state: int, current_active_state: int) -> int:
+    """Enqueues state command if changing to a new state."""
+    if flow_state != current_active_state:
+        state.enqueue_command({"cmd": "SET_FLOW_STATE", "state": flow_state})
+        state.log_event(f"Auto Loop Transition -> Flow State {flow_state}", "INFO")
+    return flow_state
 
 
 def run_auto_loop():
     """
-    Main execution loop for the automated sequence engine.
-    Runs continuously on a dedicated background thread.
+    Main state-machine loop executing:
+      1. FS5: Cool Trap A to waste until T_A < COLD_POINT_TEMP.
+      2. FS1: Sample to Trap A while Trap B cools to waste (MAX_SAMPLING_TIME).
+      3. Switch evaluation: If Trap B cold -> FS2, else -> FS6 (B to waste, A isolated).
+      4. FS2: Sample to Trap B while Trap A thaws/cools to waste (MAX_SAMPLING_TIME).
+      5. Switch evaluation: If Trap A cold -> FS1, else -> FS5 (A to waste, B isolated).
     """
     state.log_event("Automated Sequence thread initialized.", "INFO")
-    current_idx = 0
+
+    # Internal sequence phase states: "STARTUP", "SAMPLING_A", "WAIT_COOL_B", "SAMPLING_B", "WAIT_COOL_A"
+    seq_phase = "STARTUP"
+    current_flow_state = None
+    sampling_start_time = None
 
     while True:
-        # 1. Check if the system is currently in Automatic Acquisition Mode
-        if state.telemetry_data.get("mode") == "AUTOMATIC ACQUISITION":
-            target_state = FLOW_STATES[current_idx]
-            
-            # Dispatch command through thread-safe queue to avoid hardware race conditions
-            state.enqueue_command({"cmd": "SET_FLOW_STATE", "state": target_state})
-            
-            # Advance to the next flow state in the sequence (wraps around at index end)
-            current_idx = (current_idx + 1) % len(FLOW_STATES)
-
-            # 2. Responsive step delay interval
-            # Polls every 0.1s instead of a single 5.0s sleep to allow an immediate abort 
-            # if the user toggles to Manual Mode or triggers an Emergency Stop (ESTOP).
-            start_time = time.time()
-            while time.time() - start_time < STEP_INTERVAL_SEC:
-                time.sleep(0.1)
-                
-                # Abort wait loop immediately if mode changes mid-step
-                if state.telemetry_data.get("mode") != "AUTOMATIC ACQUISITION":
-                    current_idx = 0
-                    break
-        else:
-            # System is in Manual Override or ESTOP state: keep index reset and poll periodically
-            current_idx = 0
+        # Check system mode
+        if state.telemetry_data.get("mode") != "AUTOMATIC ACQUISITION":
+            # Reset sequence engine state when paused, in manual, or in ESTOP
+            seq_phase = "STARTUP"
+            current_flow_state = None
+            sampling_start_time = None
             time.sleep(0.5)
+            continue
+
+        temp_a = get_trap_temp("A")
+        temp_b = get_trap_temp("B")
+
+        # ------------------------------------------------------------------
+        # PHASE 1: Startup / Pre-cooling Trap A
+        # ------------------------------------------------------------------
+        if seq_phase == "STARTUP":
+            current_flow_state = set_system_flow_state(5, current_flow_state)
+            
+            if temp_a < COLD_POINT_TEMP:
+                state.log_event(f"Trap A cooled below threshold ({temp_a}K). Starting sample cycle.", "INFO")
+                seq_phase = "SAMPLING_A"
+                sampling_start_time = time.time()
+
+        # ------------------------------------------------------------------
+        # PHASE 2: Trap A Active Sampling (FS1)
+        # ------------------------------------------------------------------
+        elif seq_phase == "SAMPLING_A":
+            current_flow_state = set_system_flow_state(1, current_flow_state)
+            
+            elapsed = time.time() - sampling_start_time
+            if elapsed >= MAX_SAMPLING_TIME:
+                if temp_b < COLD_POINT_TEMP:
+                    state.log_event("Max sampling time reached for Trap A. Trap B is cold -> Switching to Trap B (FS2).", "INFO")
+                    seq_phase = "SAMPLING_B"
+                    sampling_start_time = time.time()
+                else:
+                    state.log_event("Max sampling time reached for Trap A. Trap B NOT cold -> Holding in FS6.", "WARN")
+                    seq_phase = "WAIT_COOL_B"
+
+        # ------------------------------------------------------------------
+        # PHASE 3: Wait for Trap B to Cool (FS6)
+        # ------------------------------------------------------------------
+        elif seq_phase == "WAIT_COOL_B":
+            current_flow_state = set_system_flow_state(6, current_flow_state)
+            
+            if temp_b < COLD_POINT_TEMP:
+                state.log_event(f"Trap B cooled below threshold ({temp_b}K) -> Transitioning to Trap B (FS2).", "INFO")
+                seq_phase = "SAMPLING_B"
+                sampling_start_time = time.time()
+
+        # ------------------------------------------------------------------
+        # PHASE 4: Trap B Active Sampling (FS2)
+        # ------------------------------------------------------------------
+        elif seq_phase == "SAMPLING_B":
+            current_flow_state = set_system_flow_state(2, current_flow_state)
+            
+            elapsed = time.time() - sampling_start_time
+            if elapsed >= MAX_SAMPLING_TIME:
+                if temp_a < COLD_POINT_TEMP:
+                    state.log_event("Max sampling time reached for Trap B. Trap A is cold -> Switching to Trap A (FS1).", "INFO")
+                    seq_phase = "SAMPLING_A"
+                    sampling_start_time = time.time()
+                else:
+                    state.log_event("Max sampling time reached for Trap B. Trap A NOT cold -> Holding in FS5.", "WARN")
+                    seq_phase = "WAIT_COOL_A"
+
+        # ------------------------------------------------------------------
+        # PHASE 5: Wait for Trap A to Cool (FS5)
+        # ------------------------------------------------------------------
+        elif seq_phase == "WAIT_COOL_A":
+            current_flow_state = set_system_flow_state(5, current_flow_state)
+            
+            if temp_a < COLD_POINT_TEMP:
+                state.log_event(f"Trap A cooled below threshold ({temp_a}K) -> Transitioning to Trap A (FS1).", "INFO")
+                seq_phase = "SAMPLING_A"
+                sampling_start_time = time.time()
+
+        # Responsive thread sleep
+        time.sleep(POLL_INTERVAL_SEC)
