@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Helium Inlet Telemetry Dashboard v4</title>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg: #020617;
+            --panel-bg: #0f172a; 
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #cbd5e1;
+            --subtext: #94a3b8;
+            --accent: #38bdf8;
+            --border: #334155;
+            --border-dark: #475569;
+            --badge-bg: #0369a1;
+            --badge-text: #f0f9ff;
+            
+            --pipe-on: #22c55e;
+            --pipe-off: #ef4444;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        
+        .dashboard-wrapper {
+            width: 100%;
+            max-width: 1600px;
+            background-color: var(--border-dark);
+            border: 1px solid var(--border-dark);
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--panel-bg);
+            padding: 16px 20px;
+        }
+        .header-title {
+            margin: 0;
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: var(--text-main);
+            letter-spacing: -0.01em;
+            text-transform: uppercase;
+        }
+        .status-badge {
+            font-size: 0.82rem;
+            padding: 4px 12px;
+            background: #78350f;
+            color: var(--badge-text);
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        
+        .layout {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 1px;
+            align-items: stretch;
+        }
+
+        .panel {
+            background-color: var(--panel-bg);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            height: 100%;
+        }
+        .panel-title {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .location-section {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            padding: 10px 14px;
+        }
+        .location-header {
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--accent);
+            margin-bottom: 6px;
+        }
+
+        .log-box-vertical {
+            background-color: var(--bg);
+            border: 1px solid var(--border);
+            padding: 12px;
+            flex: 1;
+            min-height: 400px;
+            max-height: 650px;
+            overflow-y: auto;
+            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+            font-size: 0.8rem;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .right-col { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 1px; 
+            background: var(--border-dark);
+        }
+
+        .diagram-card, .chart-card, .readout-card {
+            background-color: var(--panel-bg);
+            padding: 16px 20px;
+        }
+
+        .readouts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .sensor-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .sensor-row:last-child { border-bottom: none; }
+        .sensor-label { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); }
+        .sensor-readout { text-align: right; }
+        .primary-val { font-size: 1.05rem; font-weight: 700; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; color: var(--text-main); }
+        .subtext-val { font-size: 0.75rem; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; color: var(--subtext); margin-top: 1px; font-weight: 500; }
+        .disabled-text { color: var(--border-dark) !important; font-size: 0.85rem !important; }
+
+        .diagram-svg-container {
+            width: 100%;
+            margin-top: 10px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            padding: 12px;
+        }
+
+        .flow-controls {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .state-btn {
+            background: var(--panel-bg);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            padding: 10px 4px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            cursor: pointer;
+            border-radius: 4px;
+            text-transform: uppercase;
+            transition: all 0.2s;
+            line-height: 1.3;
+        }
+
+        .state-btn.active {
+            background: #0369a1;
+            color: #ffffff;
+            border-color: var(--accent);
+            box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+        }
+
+        .charts-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 1px; 
+            background: var(--border-dark);
+        }
+        .chart-container { position: relative; height: 210px; width: 100%; margin-top: 10px; }
+
+        .log-entry { display: flex; gap: 8px; align-items: baseline; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+        .log-time { color: var(--subtext); font-weight: 600; font-size: 0.75rem; }
+        .log-tag { font-size: 0.65rem; padding: 2px 5px; font-weight: 800; text-transform: uppercase; }
+        .tag-info { background: #334155; color: #cbd5e1; }
+        .tag-success { background: #064e3b; color: #34d399; }
+        .tag-warn { background: #78350f; color: #fbbf24; }
+        .tag-cmd { background: #1e3a8a; color: #60a5fa; }
+        .tag-danger { background: #7f1d1d; color: #fca5a5; }
+        .log-msg { color: var(--text-main); flex: 1; word-break: break-word; }
+
+        .ctrl-btn {
+            width: 100%;
+            padding: 10px;
+            margin-top: 6px;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            border: none;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+        .btn-danger { background: #991b1b; color: #fef2f2; border: 1px solid #dc2626; }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn-warning { background: #ca8a04; color: #020617; border: 1px solid #eab308; }
+        .btn-warning:hover { background: #eab308; }
+
+        .pipe { stroke-width: 4; fill: none; transition: stroke 0.3s ease; stroke-linecap: round; }
+        .readout-tag { font-family: ui-monospace, monospace; font-size: 10px; fill: #38bdf8; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-wrapper">
+        <!-- Header -->
+        <div class="header">
+            <div>
+                <h1 class="header-title">HELIUM INLET DIAGNOSTICS v4</h1>
+                <div id="device" style="color: var(--text-muted); font-size: 0.8rem; margin-top: 3px; font-weight: 500;">Device: Disconnected</div>
+            </div>
+            <div style="text-align: right;">
+                <span id="status" class="status-badge">CONNECTING...</span>
+                <div id="timestamp" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; font-weight: 500;">Waiting for server telemetry...</div>
+            </div>
+        </div>
+
+        <!-- Main Layout Grid -->
+        <div class="layout">
+            
+            <!-- LEFT PANEL: Controls & Logs -->
+            <div class="panel">
+                <h2 class="panel-title">System Controls</h2>
+                
+                <div class="location-section" style="border-color: #ef4444;">
+                    <div class="location-header" style="color: #ef4444;">Safety & Mode Controls</div>
+                    <button id="btn_estop" class="ctrl-btn btn-danger" onclick="triggerEstop()">EMERGENCY SHUTDOWN</button>
+                    <button id="btn_mode" class="ctrl-btn btn-warning" onclick="toggleMode()">SWITCH TO AUTO MODE</button>
+                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 8px; text-align: center; font-weight: 600;" id="mode_status">MANUAL OVERRIDE</div>
+                </div>
+
+                <h2 class="panel-title" style="margin-top: 10px;">System & Event Log</h2>
+                <div class="log-box-vertical" id="logBox">
+                    <div class="log-entry">
+                        <span class="log-time">--:--:--</span>
+                        <span class="log-tag tag-info">INFO</span>
+                        <span class="log-msg">System initialized. Awaiting commands/telemetry...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN -->
+            <div class="right-col">
+                
+                <!-- PLUMBING SCHEMATIC -->
+                <div class="diagram-card">
+                    <h2 class="panel-title">Full System Plumbing Schematic</h2>
+                    <div class="diagram-svg-container">
+                        <svg viewBox="0 0 900 520" style="width: 100%; height: auto;">
+                            <!-- Hardware Blocks -->
+                            <rect x="350" y="10" width="120" height="30" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+                            <text x="410" y="30" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">Sample Line In</text>
+
+                            <rect x="300" y="90" width="220" height="70" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+                            <text x="410" y="125" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">Gas Selector Valve</text>
+
+                            <!-- Traps -->
+                            <rect x="420" y="220" width="90" height="50" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+                            <text x="465" y="243" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">Trap A</text>
+                            <text id="svg_temp_a" x="465" y="260" text-anchor="middle" class="readout-tag">--.- °C</text>
+
+                            <rect x="580" y="180" width="90" height="50" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+                            <text x="625" y="203" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">Trap B</text>
+                            <text id="svg_temp_b" x="625" y="220" text-anchor="middle" class="readout-tag">--.- °C</text>
+
+                            <!-- Mass Spectrometer -->
+                            <rect x="420" y="340" width="160" height="60" fill="#f59e0b" fill-opacity="0.2" stroke="#f59e0b" stroke-width="2"/>
+                            <text x="500" y="375" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">Mass Spectrometer</text>
+
+                            <!-- Turbopumps & Gauges (Trap A / B) -->
+                            <rect x="530" y="230" width="90" height="30" fill="#0f172a" stroke="#475569"/>
+                            <text x="575" y="248" text-anchor="middle" fill="#cbd5e1" font-size="9">Pfeiffer TMH 071</text>
+                            <rect x="630" y="230" width="70" height="30" fill="#7f1d1d" stroke="#ef4444"/>
+                            <text x="665" y="243" text-anchor="middle" fill="#fff" font-size="8">Edwards AIM-SL</text>
+                            <text id="svg_p_trap_a" x="665" y="255" text-anchor="middle" class="readout-tag">-- Torr</text>
+
+                            <rect x="690" y="190" width="90" height="30" fill="#0f172a" stroke="#475569"/>
+                            <text x="735" y="208" text-anchor="middle" fill="#cbd5e1" font-size="9">Pfeiffer TMH 071</text>
+                            <rect x="790" y="190" width="70" height="30" fill="#7f1d1d" stroke="#ef4444"/>
+                            <text x="825" y="203" text-anchor="middle" fill="#fff" font-size="8">Edwards AIM-SL</text>
+                            <text id="svg_p_trap_b" x="825" y="215" text-anchor="middle" class="readout-tag">-- Torr</text>
+
+                            <!-- Left Manifold (Waste / Roughing) -->
+                            <rect x="30" y="140" width="80" height="35" fill="#7f1d1d" stroke="#ef4444"/>
+                            <text x="70" y="155" text-anchor="middle" fill="#fff" font-size="8">Emergency Relief</text>
+                            
+                            <rect x="30" y="190" width="80" height="35" fill="#1e293b" stroke="#38bdf8"/>
+                            <text x="70" y="205" text-anchor="middle" fill="#fff" font-size="8">Edwards AIM-X</text>
+                            <text id="svg_p_aimx" x="70" y="218" text-anchor="middle" class="readout-tag">-- Torr</text>
+
+                            <circle cx="110" cy="265" r="14" fill="#0369a1" stroke="#38bdf8" stroke-width="2"/>
+                            <text x="110" y="268" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold">3W</text>
+
+                            <rect x="60" y="340" width="90" height="30" fill="#0f172a" stroke="#475569"/>
+                            <text x="105" y="358" text-anchor="middle" fill="#cbd5e1" font-size="9">Pfeiffer TMU 071</text>
+
+                            <rect x="60" y="390" width="90" height="30" fill="#1e293b" stroke="#38bdf8"/>
+                            <text x="105" y="404" text-anchor="middle" fill="#fff" font-size="8">Convectron 375</text>
+                            <text id="svg_p_lovac" x="105" y="415" text-anchor="middle" class="readout-tag">-- Torr</text>
+
+                            <!-- Pumps & Waste -->
+                            <rect x="230" y="410" width="90" height="40" fill="#1e293b" stroke="#38bdf8"/>
+                            <text x="275" y="433" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">Edwards RV3</text>
+
+                            <path d="M 210 480 L 270 460 L 330 480 L 350 510 L 190 510 Z" fill="#b45309" fill-opacity="0.3" stroke="#f59e0b" stroke-width="2"/>
+                            <text x="270" y="495" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">WASTE</text>
+
+                            <!-- Pipe Lines -->
+                            <path id="pipe_sample_in" class="pipe" d="M 410 40 L 410 90" stroke="var(--pipe-off)"/>
+                            <path id="pipe_waste_out" class="pipe" d="M 300 125 L 110 125 L 110 251" stroke="var(--pipe-off)"/>
+                            <path id="pipe_trap_a" class="pipe" d="M 465 160 L 465 220" stroke="var(--pipe-off)"/>
+                            <path id="pipe_trap_b" class="pipe" d="M 520 110 L 625 110 L 625 180" stroke="var(--pipe-off)"/>
+                            <path id="pipe_ms" class="pipe" d="M 465 270 L 465 340" stroke="var(--pipe-off)"/>
+                        </svg>
+                    </div>
+
+                    <div class="flow-controls">
+                        <button id="btn_state_0" class="state-btn" onclick="setFlowState(0)">State 0<br>All Closed</button>
+                        <button id="btn_state_1" class="state-btn" onclick="setFlowState(1)">State 1<br>Smp→A | B→Wst</button>
+                        <button id="btn_state_2" class="state-btn" onclick="setFlowState(2)">State 2<br>Smp→B | A→Wst</button>
+                        <button id="btn_state_3" class="state-btn" onclick="setFlowState(3)">State 3<br>Smp→A | No Wst</button>
+                        <button id="btn_state_4" class="state-btn" onclick="setFlowState(4)">State 4<br>Smp→B | No Wst</button>
+                        <button id="btn_state_5" class="state-btn" onclick="setFlowState(5)">State 5<br>Trp A→Wst | No Smp</button>
+                        <button id="btn_state_6" class="state-btn" onclick="setFlowState(6)">State 6<br>Trp B→Wst | No Smp</button>
+                    </div>
+                </div>
+
+                <!-- PLOTS -->
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h2 class="panel-title">Live Pressures (Torr)</h2>
+                        <div class="chart-container">
+                            <canvas id="pressureChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="chart-card">
+                        <h2 class="panel-title">Live Temperatures (°C)</h2>
+                        <div class="chart-container">
+                            <canvas id="tempChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- READOUTS -->
+                <div class="readout-card">
+                    <h2 class="panel-title">System Readouts & Telemetry</h2>
+                    <div class="readouts-grid">
+                        
+                        <div class="location-section">
+                            <div class="location-header">Engine A</div>
+                            <div class="sensor-row">
+                                <span class="sensor-label">HR Temp <span style="font-size: 0.72rem; color: var(--subtext)">(104)</span></span>
+                                <div class="sensor-readout"><div class="primary-val" id="ch104">---.-- °C</div></div>
+                            </div>
+                            <div class="sensor-row">
+                                <span class="sensor-label">PV Temp <span style="font-size: 0.72rem; color: var(--subtext)">(103)</span></span>
+                                <div class="sensor-readout"><div class="primary-val" id="ch103">---.-- °C</div></div>
+                            </div>
+                        </div>
+
+                        <div class="location-section">
+                            <div class="location-header">Engine B</div>
+                            <div class="sensor-row">
+                                <span class="sensor-label">HR Temp <span style="font-size: 0.72rem; color: var(--subtext)">(101)</span></span>
+                                <div class="sensor-readout"><div class="primary-val" id="ch101">---.-- °C</div></div>
+                            </div>
+                            <div class="sensor-row">
+                                <span class="sensor-label">PV Temp <span style="font-size: 0.72rem; color: var(--subtext)">(102)</span></span>
+                                <div class="sensor-readout"><div class="primary-val" id="ch102">---.-- °C</div></div>
+                            </div>
+                        </div>
+
+                        <div class="location-section">
+                            <div class="location-header">Chamber</div>
+                            <div class="sensor-row">
+                                <span class="sensor-label">Penning <span style="font-size: 0.72rem; color: var(--subtext)">(115)</span></span>
+                                <div class="sensor-readout">
+                                    <div class="primary-val" id="ch115_p">---.--- Torr</div>
+                                    <div class="subtext-val" id="ch115_v">---.-- V</div>
+                                </div>
+                            </div>
+                            <div class="sensor-row">
+                                <span class="sensor-label">Turbo <span style="font-size: 0.72rem; color: var(--subtext)">(113)</span></span>
+                                <div class="sensor-readout"><div class="primary-val" id="ch113">---.-- V</div></div>
+                            </div>
+                        </div>
+
+                        <div class="location-section">
+                            <div class="location-header">Trap</div>
+                            <div class="sensor-row">
+                                <span class="sensor-label">Penning <span style="font-size: 0.72rem; color: var(--subtext)">(116)</span></span>
+                                <div class="sensor-readout">
+                                    <div class="primary-val" id="ch116_p">---.--- Torr</div>
+                                    <div class="subtext-val" id="ch116_v">---.-- V</div>
+                                </div>
+                            </div>
+                            <div class="sensor-row">
+                                <span class="sensor-label">Turbo <span style="font-size: 0.72rem; color: var(--subtext)">(112)</span></span>
+                                <div class="sensor-readout"><div class="primary-val" id="ch112">---.-- V</div></div>
+                            </div>
+                        </div>
+
+                        <div class="location-section">
+                            <div class="location-header">Convectrons</div>
+                            <div class="sensor-row">
+                                <span class="sensor-label">HiVac <span style="font-size: 0.72rem; color: var(--subtext)">(118)</span></span>
+                                <div class="sensor-readout">
+                                    <div class="primary-val disabled-text" id="ch118_p">N/A</div>
+                                </div>
+                            </div>
+                            <div class="sensor-row">
+                                <span class="sensor-label">LoVac <span style="font-size: 0.72rem; color: var(--subtext)">(119)</span></span>
+                                <div class="sensor-readout">
+                                    <div class="primary-val" id="ch119_p">---.--- Torr</div>
+                                    <div class="subtext-val" id="ch119_v">---.-- V</div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- JavaScript Control Logic & Telemetry Streaming -->
+    <script>
+        let isAutoMode = false;
+        let currentState = 0;
+        let ws = null;
+
+        const pipeOn = 'var(--pipe-on)';
+        const pipeOff = 'var(--pipe-off)';
+        const MAX_HISTORY = 30;
+
+        function applyVisualFlowState(stateNum) {
+            currentState = stateNum;
+
+            for (let i = 0; i <= 6; i++) {
+                const btn = document.getElementById(`btn_state_${i}`);
+                if (btn) btn.classList.toggle('active', i === stateNum);
+            }
+
+            const pSampleIn = document.getElementById('pipe_sample_in');
+            const pWasteOut = document.getElementById('pipe_waste_out');
+            const pTrapA = document.getElementById('pipe_trap_a');
+            const pTrapB = document.getElementById('pipe_trap_b');
+            const pMs = document.getElementById('pipe_ms');
+
+            let logDesc = "";
+
+            switch (stateNum) {
+                case 0:
+                    pSampleIn.setAttribute('stroke', pipeOff);
+                    pWasteOut.setAttribute('stroke', pipeOff);
+                    pTrapA.setAttribute('stroke', pipeOff);
+                    pTrapB.setAttribute('stroke', pipeOff);
+                    pMs.setAttribute('stroke', pipeOff);
+                    logDesc = "State 0: All valves closed / isolated.";
+                    break;
+
+                case 1:
+                    pSampleIn.setAttribute('stroke', pipeOn);
+                    pWasteOut.setAttribute('stroke', pipeOn);
+                    pTrapA.setAttribute('stroke', pipeOn);
+                    pTrapB.setAttribute('stroke', pipeOn);
+                    pMs.setAttribute('stroke', pipeOn);
+                    logDesc = "State 1: Sample -> Trap A | Trap B -> Waste";
+                    break;
+
+                case 2:
+                    pSampleIn.setAttribute('stroke', pipeOn);
+                    pWasteOut.setAttribute('stroke', pipeOn);
+                    pTrapA.setAttribute('stroke', pipeOn);
+                    pTrapB.setAttribute('stroke', pipeOn);
+                    pMs.setAttribute('stroke', pipeOn);
+                    logDesc = "State 2: Sample -> Trap B | Trap A -> Waste";
+                    break;
+
+                case 3:
+                    pSampleIn.setAttribute('stroke', pipeOn);
+                    pWasteOut.setAttribute('stroke', pipeOff);
+                    pTrapA.setAttribute('stroke', pipeOn);
+                    pTrapB.setAttribute('stroke', pipeOff);
+                    pMs.setAttribute('stroke', pipeOn);
+                    logDesc = "State 3: Sample -> Trap A | No Waste";
+                    break;
+
+                case 4:
+                    pSampleIn.setAttribute('stroke', pipeOn);
+                    pWasteOut.setAttribute('stroke', pipeOff);
+                    pTrapA.setAttribute('stroke', pipeOff);
+                    pTrapB.setAttribute('stroke', pipeOn);
+                    pMs.setAttribute('stroke', pipeOn);
+                    logDesc = "State 4: Sample -> Trap B | No Waste";
+                    break;
+
+                case 5:
+                    pSampleIn.setAttribute('stroke', pipeOff);
+                    pWasteOut.setAttribute('stroke', pipeOn);
+                    pTrapA.setAttribute('stroke', pipeOn);
+                    pTrapB.setAttribute('stroke', pipeOff);
+                    pMs.setAttribute('stroke', pipeOff);
+                    logDesc = "State 5: Trap A -> Waste | No Sample In";
+                    break;
+
+                case 6:
+                    pSampleIn.setAttribute('stroke', pipeOff);
+                    pWasteOut.setAttribute('stroke', pipeOn);
+                    pTrapA.setAttribute('stroke', pipeOff);
+                    pTrapB.setAttribute('stroke', pipeOn);
+                    pMs.setAttribute('stroke', pipeOff);
+                    logDesc = "State 6: Trap B -> Waste | No Sample In";
+                    break;
+            }
+
+            return logDesc;
+        }
+
+        function setFlowState(stateNum) {
+            const logDesc = applyVisualFlowState(stateNum);
+            injectLocalLog("CMD", `Valve State Changed: ${logDesc}`);
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    command: "SET_FLOW_STATE",
+                    state: stateNum,
+                    timestamp: new Date().toISOString()
+                }));
+            }
+        }
+
+        function triggerEstop() {
+            const logDesc = "EMERGENCY SHUTDOWN INITIATED. ALL VALVES CLOSED.";
+            applyVisualFlowState(0);
+            injectLocalLog("DANGER", logDesc);
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    command: "ESTOP",
+                    timestamp: new Date().toISOString()
+                }));
+            }
+        }
+
+        function toggleMode() {
+            isAutoMode = !isAutoMode;
+            const btn = document.getElementById('btn_mode');
+            const status = document.getElementById('mode_status');
+            let logDesc = "";
+            
+            if (isAutoMode) {
+                btn.innerText = "SWITCH TO MANUAL MODE";
+                status.innerText = "CURRENT: AUTOMATIC ACQUISITION";
+                logDesc = "System mode changed to AUTOMATIC";
+            } else {
+                btn.innerText = "SWITCH TO AUTO MODE";
+                status.innerText = "CURRENT: MANUAL OVERRIDE";
+                logDesc = "System mode changed to MANUAL";
+            }
+
+            injectLocalLog("CMD", logDesc);
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    command: "SET_MODE",
+                    auto_mode: isAutoMode,
+                    timestamp: new Date().toISOString()
+                }));
+            }
+        }
+
+        function injectLocalLog(level, msg) {
+            const box = document.getElementById("logBox");
+            const entry = document.createElement("div");
+            entry.className = "log-entry";
+            const timeStr = new Date().toLocaleTimeString('en-US', { hour12: false });
+            
+            let tagClass = "tag-cmd";
+            if (level === "DANGER") tagClass = "tag-danger";
+            if (level === "WARN") tagClass = "tag-warn";
+            
+            entry.innerHTML = `<span class="log-time">${timeStr}</span><span class="log-tag ${tagClass}">${level}</span><span class="log-msg" style="font-weight: 600;">${msg}</span>`;
+            box.appendChild(entry);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        // CHART CONFIGURATIONS
+        const gridColor = '#334155';
+        const tickColor = '#94a3b8';
+        const legendColor = '#cbd5e1';
+
+        const ctxP = document.getElementById('pressureChart').getContext('2d');
+        const pressureChart = new Chart(ctxP, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    { label: 'Chamber (115)', borderColor: '#38bdf8', data: [], tension: 0.1, borderWidth: 2, pointRadius: 0 },
+                    { label: 'Trap (116)', borderColor: '#fbbf24', data: [], tension: 0.1, borderWidth: 2, pointRadius: 0 },
+                    { label: 'LoVac (119)', borderColor: '#34d399', data: [], tension: 0.1, borderWidth: 2, pointRadius: 0 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, animation: false,
+                scales: {
+                    x: { ticks: { color: tickColor, font: { size: 9 } }, grid: { display: false } },
+                    y: { type: 'logarithmic', min: 1e-8, max: 1e3, grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 9 } } }
+                },
+                plugins: { legend: { labels: { color: legendColor, font: { size: 10 } } } }
+            }
+        });
+
+        const ctxT = document.getElementById('tempChart').getContext('2d');
+        const tempChart = new Chart(ctxT, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    { label: 'Trap A HR (104)', borderColor: '#f43f5e', data: [], tension: 0.1, borderWidth: 2, pointRadius: 0 },
+                    { label: 'Trap B HR (101)', borderColor: '#fbbf24', data: [], tension: 0.1, borderWidth: 2, pointRadius: 0 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, animation: false,
+                scales: {
+                    x: { ticks: { color: tickColor, font: { size: 9 } }, grid: { display: false } },
+                    y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 9 } } }
+                },
+                plugins: { legend: { labels: { color: legendColor, font: { size: 10 } } } }
+            }
+        });
+
+        // REAL-TIME WEBSOCKET FEED
+        function connectWebSocket() {
+            const host = window.location.host;
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${host}/ws`);
+
+            ws.onopen = () => {
+                document.getElementById('status').innerText = "CONNECTED";
+                document.getElementById('status').style.background = "#064e3b";
+                injectLocalLog("INFO", "WebSocket telemetry channel established.");
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+
+                // Update text elements
+                if (data.status) document.getElementById('status').innerText = data.status;
+                if (data.device) document.getElementById('device').innerText = data.device;
+                if (data.timestamp) document.getElementById('timestamp').innerText = data.timestamp;
+
+                if (data.ch104) {
+                    document.getElementById('ch104').innerText = data.ch104;
+                    document.getElementById('svg_temp_a').textContent = data.ch104;
+                }
+                if (data.ch103) document.getElementById('ch103').innerText = data.ch103;
+                if (data.ch101) {
+                    document.getElementById('ch101').innerText = data.ch101;
+                    document.getElementById('svg_temp_b').textContent = data.ch101;
+                }
+                if (data.ch102) document.getElementById('ch102').innerText = data.ch102;
+
+                if (data.ch115_p) {
+                    document.getElementById('ch115_p').innerText = data.ch115_p;
+                    document.getElementById('svg_p_aimx').textContent = data.ch115_p;
+                }
+                if (data.ch115_v) document.getElementById('ch115_v').innerText = data.ch115_v;
+                
+                if (data.ch116_p) {
+                    document.getElementById('ch116_p').innerText = data.ch116_p;
+                    document.getElementById('svg_p_trap_a').textContent = data.ch116_p;
+                    document.getElementById('svg_p_trap_b').textContent = data.ch116_p;
+                }
+                if (data.ch116_v) document.getElementById('ch116_v').innerText = data.ch116_v;
+
+                if (data.ch119_p) {
+                    document.getElementById('ch119_p').innerText = data.ch119_p;
+                    document.getElementById('svg_p_lovac').textContent = data.ch119_p;
+                }
+                if (data.ch119_v) document.getElementById('ch119_v').innerText = data.ch119_v;
+
+                if (data.ch112) document.getElementById('ch112').innerText = data.ch112;
+                if (data.ch113) document.getElementById('ch113').innerText = data.ch113;
+
+                // Sync Flow State
+                if (data.flow_state !== undefined && data.flow_state !== currentState) {
+                    applyVisualFlowState(data.flow_state);
+                }
+
+                // Push Plot Data
+                const timeStr = data.time_str || new Date().toLocaleTimeString('en-US', { hour12: false });
+                
+                pressureChart.data.labels.push(timeStr);
+                pressureChart.data.datasets[0].data.push(data.ch115_p_val ?? null);
+                pressureChart.data.datasets[1].data.push(data.ch116_p_val ?? null);
+                pressureChart.data.datasets[2].data.push(data.ch119_p_val ?? null);
+
+                tempChart.data.labels.push(timeStr);
+                tempChart.data.datasets[0].data.push(data.ch104_val ?? null);
+                tempChart.data.datasets[1].data.push(data.ch101_val ?? null);
+
+                if (pressureChart.data.labels.length > MAX_HISTORY) {
+                    pressureChart.data.labels.shift();
+                    pressureChart.data.datasets.forEach(ds => ds.data.shift());
+                    tempChart.data.labels.shift();
+                    tempChart.data.datasets.forEach(ds => ds.data.shift());
+                }
+
+                pressureChart.update();
+                tempChart.update();
+            };
+
+            ws.onclose = () => {
+                document.getElementById('status').innerText = "DISCONNECTED";
+                document.getElementById('status').style.background = "#78350f";
+                setTimeout(connectWebSocket, 3000);
+            };
+        }
+
+        // Initialize WebSocket connection on boot
+        connectWebSocket();
+    </script>
+</body>
+</html>
