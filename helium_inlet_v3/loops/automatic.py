@@ -22,16 +22,17 @@ POLL_INTERVAL_SEC = 0.1  # Responsive check rate for aborts/mode changes
 
 
 def get_trap_temp(trap_id: str) -> float:
-    """
-    Helper to fetch temperature for Trap A or Trap B from telemetry.
-    Adjust key lookup according to actual telemetry mappings.
-    """
-    telemetry = state.telemetry_data
-    if trap_id == "A":
-        # Check standard channel or direct temp key (e.g., ch104 / temp_A)
-        return float(telemetry.get("temp_A", telemetry.get("ch104", 999.0)))
-    elif trap_id == "B":
-        return float(telemetry.get("temp_B", telemetry.get("ch101", 999.0)))
+    """Fetches numerical trap temperature from telemetry using exact IO loop value keys."""
+    telemetry = getattr(state, "telemetry_data", {})
+    
+    # Primary and secondary numeric value keys populated by io_loop.py
+    keys = ["ch104_val", "ch103_val"] if trap_id == "A" else ["ch101_val", "ch102_val"]
+
+    for key in keys:
+        val = telemetry.get(key)
+        if val is not None and isinstance(val, (int, float)):
+            return float(val)
+
     return 999.0
 
 
