@@ -2,7 +2,7 @@
 hardware/agilent.py - Agilent 34970A Hardware Driver & Signal Processing
 
 This script contains the functions needed to communicate and interact with the Agilent 34970A,
-including specific pressure conversion matrices for the instrument's vacuum gauges.
+including specific pressure conversion functions for the instrument's vacuum gauges.
 """
 
 import math

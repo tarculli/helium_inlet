@@ -104,10 +104,10 @@ def process_command_queue(agilent_inst):
             telemetry_data["mode"] = "AUTOMATIC ACQUISITION" if is_auto else "MANUAL OVERRIDE"
             log_event(f"Mode set to {telemetry_data['mode']}.", "SUCCESS")
 
-        # 3. Emergency Stop (E-STOP) Command
+        # 3. Close All Valves Command
         elif cmd_type == "ESTOP":
             telemetry_data["mode"] = "MANUAL OVERRIDE"
-            log_event("ESTOP INITIATED! Terminating sequence.", "WARN")
+            log_event("ESTOP INITIATED! Closing all valves.", "WARN")
             if agilent_inst.emergency_stop():
                 telemetry_data["control"]["flow_state"] = 0
                 log_event("ESTOP Complete: All valves depressurized.", "SUCCESS")
