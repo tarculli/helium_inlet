@@ -2,10 +2,9 @@
 hardware/agilent.py - Agilent 34970A Hardware Driver & Signal Processing
 
 This script contains the functions needed to communicate and interact with the Agilent 34970A,
-including specific pressure conversion matrices for the instrument's vacuum gauges.
+including specific pressure conversion functions for the instrument's vacuum gauges.
 """
 
-import logging
 import math
 import time
 import serial
@@ -19,8 +18,6 @@ from config import (
     VALVE_SLOT_PREFIX,
     VOLT_CHANNELS,
 )
-
-logger = logging.getLogger(__name__)
 
 
 class Agilent34970A:
@@ -51,13 +48,13 @@ class Agilent34970A:
             # Clear status registers (*CLS) and query device identity (*IDN?)
             self.device.write(b"*CLS\r\n")
             self.device.write(b"*IDN?\r\n")
-            time.sleep(0.15)
+            time.sleep(0.1)
 
             idn = self.device.readline().decode("utf-8", errors="ignore").strip()
             self.connected = bool(idn)
             return idn
         except Exception as e:
-            logger.error(f"[Agilent Serial Error] Connection failed: {e}")
+            print(f"[Agilent Serial Error] Connection failed: {e}")
             self.connected = False
             return None
 
@@ -87,29 +84,31 @@ class Agilent34970A:
             time.sleep(0.1)
             raw_volt = self.device.readline().decode("utf-8", errors="ignore").strip()
 
+            # Parse comma-separated string responses into float arrays
             tc_vals = [float(x) for x in raw_tc.split(",") if x.strip()] if raw_tc else []
             v_vals = [float(x) for x in raw_volt.split(",") if x.strip()] if raw_volt else []
 
             return tc_vals, v_vals
         except Exception as e:
-            logger.error(f"[Agilent Serial Error] Read failed: {e}")
+            print(f"[Agilent Serial Error] Read failed: {e}")
             self.connected = False
             return None, None
 
     def set_flow_state(self, state_num: int) -> bool:
-        """Energizes/de-energizes multiplexer relays to match target valve flow state."""
+        """Energizes/de-energizes gas selector relays (V1-V4) without altering auxiliary valves (V5, V8)."""
         if not self.connected or not self.device:
             return False
 
         if state_num not in STATE_VALVE_MAP:
-            logger.warning(f"Invalid state_num requested: {state_num}")
             return False
 
         active_valves = STATE_VALVE_MAP[state_num]
 
+        # Restrict flow state updates strictly to gas selector valves V1-V4
+        selector_keys = ["V1", "V2", "V3", "V4"]
         all_channels = {
-            v: str(VALVE_SLOT_PREFIX + int(ch))
-            for v, ch in VALVE_CHANNELS.items()
+            v: str(VALVE_SLOT_PREFIX + int(VALVE_CHANNELS[v]))
+            for v in selector_keys if v in VALVE_CHANNELS
         }
 
         close_list = [all_channels[v] for v in active_valves if v in all_channels]
@@ -118,23 +117,67 @@ class Agilent34970A:
         try:
             self.device.reset_input_buffer()
 
-            # Open non-active valve relays first to prevent over-pressurization
             if open_list:
-                self.device.write(
-                    f"ROUTe:OPEn (@{','.join(open_list)})\r\n".encode("utf-8")
-                )
+                self.device.write(f"ROUTe:OPEn (@{','.join(open_list)})\r\n".encode("utf-8"))
+                self.device.flush()
                 time.sleep(0.1)
 
-            # Close active valve relays to energize selected path
             if close_list:
-                self.device.write(
-                    f"ROUTe:CLOSe (@{','.join(close_list)})\r\n".encode("utf-8")
-                )
+                self.device.write(f"ROUTe:CLOSe (@{','.join(close_list)})\r\n".encode("utf-8"))
+                self.device.flush()
                 time.sleep(0.1)
 
             return True
         except Exception as e:
-            logger.error(f"[Agilent Hardware Error] set_flow_state failed: {e}")
+            print(f"[Agilent Hardware Error] set_flow_state failed: {e}")
+            self.connected = False
+            return False
+
+    def set_single_valve(self, valve_key: str, open_valve: bool) -> bool:
+        """Directly energizes (opens) or de-energizes (closes) a single valve relay independently."""
+        if not self.connected or not self.device:
+            print("[Agilent Serial Error] Cannot set valve: Device not connected.")
+            return False
+
+        all_channels = {
+            str(v): str(VALVE_SLOT_PREFIX + int(ch))
+            for v, ch in VALVE_CHANNELS.items()
+        }
+
+        v_key = str(valve_key).strip()
+        channel = (
+            all_channels.get(v_key)
+            or all_channels.get(f"V{v_key}")
+            or all_channels.get(v_key.lstrip("V"))
+        )
+
+        if not channel:
+            print(f"⚠️ [Agilent Hardware Error] Valve '{valve_key}' not found in VALVE_CHANNELS map!")
+            return False
+
+        scpi_action = "CLOSe" if open_valve else "OPEn"
+        cmd = f"ROUTe:{scpi_action} (@{channel})\r\n"
+
+        try:
+            self.device.reset_input_buffer()
+            self.device.write(cmd.encode("utf-8"))
+            self.device.flush()
+            time.sleep(0.1)
+
+            # Match test script error queue check to catch Agilent hardware collisions
+            self.device.write(b"SYSTem:ERRor?\r\n")
+            self.device.flush()
+            time.sleep(0.05)
+            err_msg = self.device.readline().decode("utf-8", errors="ignore").strip()
+
+            if err_msg and not err_msg.startswith("+0"):
+                print(f"⚠️ Agilent SCPI Error Queue: {err_msg}")
+
+            print(f"✅ SCPI Executed: {cmd.strip()} -> Valve {valve_key} (Channel {channel}) is now {'OPEN' if open_valve else 'CLOSED'}")
+            return True
+
+        except Exception as e:
+            print(f"❌ [Agilent Hardware Error] Failed to toggle valve {valve_key}: {e}")
             self.connected = False
             return False
 
@@ -152,10 +195,11 @@ class Agilent34970A:
             )
             return True
         except Exception as e:
-            logger.error(f"[Agilent Hardware Error] ESTOP failed: {e}")
+            print(f"[Agilent Hardware Error] ESTOP failed: {e}")
             self.connected = False
             return False
-
+        
+    
     # ==========================================================================
     # DISPLAY FORMATTING HELPERS
     # ==========================================================================
@@ -180,7 +224,10 @@ class Agilent34970A:
     # ==========================================================================
     @staticmethod
     def calc_chamber_aim_sl_pressure(volts):
-        """Calculates vacuum pressure for Chamber Inverted Magnetron (Edwards AIM-SL)."""
+        """Calculates vacuum pressure for Chamber Inverted Magnetron (Edwards AIM-SL).
+
+        Uses logarithmic linear interpolation across standard manufacturer curve points.
+        """
         if volts is None:
             return None, "---.--- Torr"
         if volts < 2.00:
@@ -201,10 +248,12 @@ class Agilent34970A:
             (9.80, 1.3e-3), (9.90, 2.7e-3), (10.00, 7.5e-3),
         ]
 
+        # Exact voltage match lookup
         for v, p in aim_sl_table_torr:
             if abs(volts - v) < 0.001:
                 return p, f"{p:.2e} Torr"
 
+        # Piecewise log10 interpolation between bracketed calibration points
         for i in range(len(aim_sl_table_torr) - 1):
             v1, p1 = aim_sl_table_torr[i]
             v2, p2 = aim_sl_table_torr[i + 1]
@@ -226,10 +275,7 @@ class Agilent34970A:
         if volts is None or volts < 0.5:
             return None, "---.--- Torr"
         try:
-            exponent = (volts * 0.875) - 10.75
-            if exponent > 10 or exponent < -15:
-                return None, "Out of Range"
-            pressure_torr = (10**exponent) * 0.750062
+            pressure_torr = (10 ** ((volts * 0.875) - 10.75)) * 0.750062
             return pressure_torr, f"{pressure_torr:.2e} Torr"
         except Exception:
             return None, "Error"

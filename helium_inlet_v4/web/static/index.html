@@ -3,25 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Helium Inlet Telemetry Dashboard v4</title>
+    <title>Helium Inlet Telemetry Dashboard</title>
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
-            --bg: #020617;
-            --panel-bg: #0f172a; 
-            --card-bg: #1e293b;
-            --text-main: #f8fafc;
-            --text-muted: #cbd5e1;
-            --subtext: #94a3b8;
-            --accent: #38bdf8;
-            --border: #334155;
-            --border-dark: #475569;
-            --badge-bg: #0369a1;
-            --badge-text: #f0f9ff;
+            --bg: #f3efe6;
+            --panel-bg: #fcfbf8; 
+            --card-bg: #e9e3d8;
+            --text-main: #1c1917;
+            --text-muted: #57534e;
+            --subtext: #78716c;
+            --accent: #0284c7;
+            --accent-hover: #0369a1;
+            --accent-active: #0c4a6e;
+            --border: #dbd4c8;
+            --border-dark: #c7beae;
+            --badge-bg: #fef3c7;
+            --badge-text: #92400e;
             
-            --pipe-on: #22c55e;
-            --pipe-off: #ef4444;
+            --pipe-on: #16a34a;
+            --pipe-off: #dc2626;
         }
         * { box-sizing: border-box; }
         body {
@@ -36,7 +38,7 @@
         
         .dashboard-wrapper {
             width: 100%;
-            max-width: 1600px;
+            max-width: 1400px;
             background-color: var(--border-dark);
             border: 1px solid var(--border-dark);
             display: flex;
@@ -60,12 +62,27 @@
             text-transform: uppercase;
         }
         .status-badge {
-            font-size: 0.82rem;
-            padding: 4px 12px;
-            background: #78350f;
-            color: var(--badge-text);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75rem;
             font-weight: 700;
+            letter-spacing: 0.06em;
             text-transform: uppercase;
+            color: var(--text-main) !important;
+            background: transparent !important;
+            border: 1px solid var(--border) !important;
+            padding: 4px 10px;
+            border-radius: 9999px;
+        }
+        .status-badge::before {
+            content: '';
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background-color: #16a34a;
+            box-shadow: 0 0 6px rgba(22, 163, 74, 0.8);
         }
         
         .layout {
@@ -108,13 +125,69 @@
             margin-bottom: 6px;
         }
 
+        /* Flow & Waste Button Grids in Sidebar */
+        .flow-controls-panel, .waste-controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .state-btn {
+            background: var(--accent);
+            color: #ffffff;
+            border: 1px solid var(--accent-hover);
+            padding: 8px 4px;
+            font-size: 0.65rem;
+            font-weight: 800;
+            cursor: pointer;
+            border-radius: 2px;
+            text-transform: uppercase;
+            transition: all 0.2s;
+            line-height: 1.3;
+        }
+        .state-btn:hover {
+            background: var(--accent-hover);
+        }
+        .state-btn.active {
+            background: var(--accent-active);
+            color: #ffffff;
+            border: 1px solid #38bdf8;
+            box-shadow: 0 0 8px rgba(2, 132, 199, 0.5);
+        }
+
+        /* Waste Pathway Valves (V5 & V8): CLOSED = Solid Red | OPEN = Solid Green */
+        .btn-waste {
+            width: 100%;
+            padding: 10px 4px;
+            margin-top: 4px;
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            border-radius: 2px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: #dc2626; /* CLOSED = Solid Red */
+            color: #ffffff;
+            border: 1px solid #b91c1c;
+        }
+        .btn-waste:hover {
+            background: #b91c1c;
+        }
+        .btn-waste.active {
+            background: #16a34a; /* OPEN = Solid Green */
+            color: #ffffff;
+            border: 1px solid #15803d;
+            box-shadow: 0 0 8px rgba(22, 163, 74, 0.4);
+        }
+
         .log-box-vertical {
             background-color: var(--bg);
             border: 1px solid var(--border);
             padding: 12px;
             flex: 1;
-            min-height: 400px;
-            max-height: 650px;
+            min-height: 250px;
+            max-height: 450px;
             overflow-y: auto;
             font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
             font-size: 0.8rem;
@@ -154,7 +227,7 @@
         .sensor-readout { text-align: right; }
         .primary-val { font-size: 1.05rem; font-weight: 700; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; color: var(--text-main); }
         .subtext-val { font-size: 0.75rem; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; color: var(--subtext); margin-top: 1px; font-weight: 500; }
-        .disabled-text { color: var(--border-dark) !important; font-size: 0.85rem !important; }
+        .disabled-text { color: var(--subtext) !important; font-size: 0.85rem !important; }
 
         .diagram-svg-container {
             width: 100%;
@@ -162,34 +235,6 @@
             background: var(--card-bg);
             border: 1px solid var(--border);
             padding: 12px;
-        }
-
-        .flow-controls {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 8px;
-            margin-top: 12px;
-        }
-
-        .state-btn {
-            background: var(--panel-bg);
-            color: var(--text-muted);
-            border: 1px solid var(--border);
-            padding: 10px 4px;
-            font-size: 0.68rem;
-            font-weight: 700;
-            cursor: pointer;
-            border-radius: 4px;
-            text-transform: uppercase;
-            transition: all 0.2s;
-            line-height: 1.3;
-        }
-
-        .state-btn.active {
-            background: #0369a1;
-            color: #ffffff;
-            border-color: var(--accent);
-            box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
         }
 
         .charts-grid { 
@@ -202,18 +247,18 @@
 
         .log-entry { display: flex; gap: 8px; align-items: baseline; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
         .log-time { color: var(--subtext); font-weight: 600; font-size: 0.75rem; }
-        .log-tag { font-size: 0.65rem; padding: 2px 5px; font-weight: 800; text-transform: uppercase; }
-        .tag-info { background: #334155; color: #cbd5e1; }
-        .tag-success { background: #064e3b; color: #34d399; }
-        .tag-warn { background: #78350f; color: #fbbf24; }
-        .tag-cmd { background: #1e3a8a; color: #60a5fa; }
-        .tag-danger { background: #7f1d1d; color: #fca5a5; }
+        .log-tag { font-size: 0.65rem; padding: 2px 5px; font-weight: 800; text-transform: uppercase; border-radius: 2px; }
+        .tag-info { background: #e7e0d3; color: #44403c; }
+        .tag-success { background: #d1fae5; color: #065f46; }
+        .tag-warn { background: #fef3c7; color: #92400e; }
+        .tag-cmd { background: #dbeafe; color: #1e40af; }
+        .tag-danger { background: #fee2e2; color: #991b1b; }
         .log-msg { color: var(--text-main); flex: 1; word-break: break-word; }
 
         .ctrl-btn {
             width: 100%;
             padding: 10px;
-            margin-top: 6px;
+            margin-top: 4px;
             font-size: 0.75rem;
             letter-spacing: 0.05em;
             border: none;
@@ -221,14 +266,25 @@
             cursor: pointer;
             transition: all 0.2s;
             text-transform: uppercase;
+            border-radius: 2px;
         }
-        .btn-danger { background: #991b1b; color: #fef2f2; border: 1px solid #dc2626; }
+        .btn-danger { background: #dc2626; color: #ffffff; border: 1px solid #b91c1c; }
         .btn-danger:hover { background: #b91c1c; }
-        .btn-warning { background: #ca8a04; color: #020617; border: 1px solid #eab308; }
-        .btn-warning:hover { background: #eab308; }
+        .btn-warning { background: #d97706; color: #ffffff; border: 1px solid #b45309; }
+        .btn-warning:hover { background: #b45309; }
 
-        .pipe { stroke-width: 4; fill: none; transition: stroke 0.3s ease; stroke-linecap: round; }
-        .readout-tag { font-family: ui-monospace, monospace; font-size: 10px; fill: #38bdf8; font-weight: bold; }
+        .pipe { stroke-width: 2.2; fill: none; transition: stroke 0.3s ease; stroke-linecap: round; }
+        .pipe-inner { stroke-width: 2; fill: none; transition: stroke 0.3s ease; stroke-linecap: round; }
+
+        /* SVG Box Styles */
+        .box-silver { fill: url(#metallicGrad); stroke: #334155; stroke-width: 1.2; }
+        .text-silver { fill: #0f172a; font-size: 11px; font-weight: 800; text-anchor: middle; dominant-baseline: central; }
+
+        .box-red { fill: #fee2e2; stroke: #dc2626; stroke-width: 1.2; rx: 2px; }
+        .text-red { fill: #991b1b; font-size: 10px; font-weight: 800; text-anchor: middle; dominant-baseline: central; }
+
+        .box-blue { fill: #e0f2fe; stroke: #0284c7; stroke-width: 1.2; rx: 2px; }
+        .text-blue { fill: #0369a1; font-size: 10px; font-weight: 800; text-anchor: middle; dominant-baseline: central; }
     </style>
 </head>
 <body>
@@ -237,8 +293,8 @@
         <!-- Header -->
         <div class="header">
             <div>
-                <h1 class="header-title">HELIUM INLET DIAGNOSTICS v4</h1>
-                <div id="device" style="color: var(--text-muted); font-size: 0.8rem; margin-top: 3px; font-weight: 500;">Device: Disconnected</div>
+                <h1 class="header-title">HELIUM INLET CONTROL</h1>
+                <div id="device" style="color: var(--text-muted); font-size: 1.0rem; margin-top: 3px; font-weight: 500;">Device: Disconnected</div>
             </div>
             <div style="text-align: right;">
                 <span id="status" class="status-badge">CONNECTING...</span>
@@ -253,11 +309,38 @@
             <div class="panel">
                 <h2 class="panel-title">System Controls</h2>
                 
+                <!-- Safety & Mode Controls -->
                 <div class="location-section" style="border-color: #ef4444;">
                     <div class="location-header" style="color: #ef4444;">Safety & Mode Controls</div>
-                    <button id="btn_estop" class="ctrl-btn btn-danger" onclick="triggerEstop()">EMERGENCY SHUTDOWN</button>
+                    <button id="btn_estop" class="ctrl-btn btn-danger" onclick="triggerEstop()">CLOSE ALL VALVES</button>
                     <button id="btn_mode" class="ctrl-btn btn-warning" onclick="toggleMode()">SWITCH TO AUTO MODE</button>
                     <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 8px; text-align: center; font-weight: 600;" id="mode_status">MANUAL OVERRIDE</div>
+                </div>
+
+                <!-- Gas Selector Controls -->
+                <div class="location-section">
+                    <div class="location-header">Gas Selector Controls</div>
+                    <div class="flow-controls-panel">
+                        <button id="btn_state_1" class="state-btn" onclick="setFlowState(1)">State 1<br>Smp→A | B→Wst</button>
+                        <button id="btn_state_2" class="state-btn" onclick="setFlowState(2)">State 2<br>Smp→B | A→Wst</button>
+                        <button id="btn_state_3" class="state-btn" onclick="setFlowState(3)">State 3<br>Smp→A | No Wst</button>
+                        <button id="btn_state_4" class="state-btn" onclick="setFlowState(4)">State 4<br>Smp→B | No Wst</button>
+                        <button id="btn_state_5" class="state-btn" onclick="setFlowState(5)">State 5<br>Trp A→Wst | No Smp</button>
+                        <button id="btn_state_6" class="state-btn" onclick="setFlowState(6)">State 6<br>Trp B→Wst | No Smp</button>
+                    </div>
+                </div>
+
+                <!-- Waste Pathway Controls -->
+                <div class="location-section">
+                    <div class="location-header">Waste Pathway</div>
+                    <div class="waste-controls-grid">
+                        <button id="btn_roughing_pump" class="btn-waste" onclick="toggleWasteValve('V5')">
+                            Roughing (V5)<br><span id="lbl_v5">CLOSED</span>
+                        </button>
+                        <button id="btn_hivac_pump" class="btn-waste" onclick="toggleWasteValve('V8')">
+                            HiVac / Turbo (V8)<br><span id="lbl_v8">CLOSED</span>
+                        </button>
+                    </div>
                 </div>
 
                 <h2 class="panel-title" style="margin-top: 10px;">System & Event Log</h2>
@@ -275,84 +358,126 @@
                 
                 <!-- PLUMBING SCHEMATIC -->
                 <div class="diagram-card">
-                    <h2 class="panel-title">Full System Plumbing Schematic</h2>
+                    <h2 class="panel-title">Gas Selector & Vacuum Plumbing Diagram</h2>
                     <div class="diagram-svg-container">
-                        <svg viewBox="0 0 900 520" style="width: 100%; height: auto;">
-                            <!-- Hardware Blocks -->
-                            <rect x="350" y="10" width="120" height="30" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
-                            <text x="410" y="30" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">Sample Line In</text>
+                        <svg viewBox="0 0 780 380" style="width: 100%; height: auto;">
+                            <defs>
+                                <linearGradient id="metallicGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#e2e8f0"/>
+                                    <stop offset="50%" stop-color="#cbd5e1"/>
+                                    <stop offset="100%" stop-color="#94a3b8"/>
+                                </linearGradient>
+                                <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
+                                </marker>
+                            </defs>
 
-                            <rect x="300" y="90" width="220" height="70" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
-                            <text x="410" y="125" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">Gas Selector Valve</text>
+                            <!-- Pipe Lines: Gas Selector & MS -->
+                            <path id="pipe_sample_in" class="pipe" d="M 540 190 L 425 190" stroke="var(--pipe-off)" marker-end="url(#arrow)"/>
+                            <path id="pipe_trap_b_in" class="pipe" d="M 380 145 L 380 115" stroke="var(--pipe-off)"/>
+                            <path id="pipe_trap_a_in" class="pipe" d="M 380 235 L 380 265" stroke="var(--pipe-off)"/>
+                            <path id="pipe_waste_out" class="pipe" d="M 335 190 L 265 190" stroke="var(--pipe-off)"/>
 
-                            <!-- Traps -->
-                            <rect x="420" y="220" width="90" height="50" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
-                            <text x="465" y="243" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">Trap A</text>
-                            <text id="svg_temp_a" x="465" y="260" text-anchor="middle" class="readout-tag">--.- °C</text>
+                            <!-- Trap B Header Lines -->
+                            <path id="pipe_trap_b_header" class="pipe" d="M 380 75 L 380 40" stroke="var(--pipe-off)"/>
+                            <path id="pipe_penning_b" class="pipe" d="M 380 40 L 470 40" stroke="var(--pipe-off)"/>
+                            <path id="pipe_trap_b_ms" class="pipe" d="M 380 40 L 300 40" stroke="var(--pipe-off)"/>
+                            <path id="pipe_turbo_b_ms" class="pipe" d="M 210 40 L 80 40 L 80 190" stroke="var(--pipe-off)"/>
 
-                            <rect x="580" y="180" width="90" height="50" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
-                            <text x="625" y="203" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">Trap B</text>
-                            <text id="svg_temp_b" x="625" y="220" text-anchor="middle" class="readout-tag">--.- °C</text>
+                            <!-- Trap A Header Lines -->
+                            <path id="pipe_trap_a_header" class="pipe" d="M 380 305 L 380 340" stroke="var(--pipe-off)"/>
+                            <path id="pipe_penning_a" class="pipe" d="M 380 340 L 470 340" stroke="var(--pipe-off)"/>
+                            <path id="pipe_trap_a_ms" class="pipe" d="M 380 340 L 300 340" stroke="var(--pipe-off)"/>
+                            <path id="pipe_turbo_a_ms" class="pipe" d="M 210 340 L 80 340 L 80 190" stroke="var(--pipe-off)"/>
 
-                            <!-- Mass Spectrometer -->
-                            <rect x="420" y="340" width="160" height="60" fill="#f59e0b" fill-opacity="0.2" stroke="#f59e0b" stroke-width="2"/>
-                            <text x="500" y="375" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">Mass Spectrometer</text>
+                            <!-- MS Main Input Line -->
+                            <path id="pipe_ms_out" class="pipe" d="M 80 190 L 65 190" stroke="var(--pipe-off)" marker-end="url(#arrow)"/>
 
-                            <!-- Turbopumps & Gauges (Trap A / B) -->
-                            <rect x="530" y="230" width="90" height="30" fill="#0f172a" stroke="#475569"/>
-                            <text x="575" y="248" text-anchor="middle" fill="#cbd5e1" font-size="9">Pfeiffer TMH 071</text>
-                            <rect x="630" y="230" width="70" height="30" fill="#7f1d1d" stroke="#ef4444"/>
-                            <text x="665" y="243" text-anchor="middle" fill="#fff" font-size="8">Edwards AIM-SL</text>
-                            <text id="svg_p_trap_a" x="665" y="255" text-anchor="middle" class="readout-tag">-- Torr</text>
+                            <!-- Waste Section Pipe Lines -->
+                            <path id="pipe_penning_wst" class="pipe" d="M 295 190 L 295 150" stroke="var(--pipe-off)"/>
+                            <path id="pipe_waste_rough" class="pipe" d="M 265 190 L 265 150 L 180 150" stroke="var(--pipe-off)" marker-end="url(#arrow)"/>
+                            <path id="pipe_waste_hivac" class="pipe" d="M 265 190 L 265 230 L 125 230 L 125 170 L 125 165" stroke="var(--pipe-off)"/>
+                            <path id="pipe_hivac_conv" class="pipe" d="M 182.5 230 L 182.5 275" stroke="var(--pipe-off)"/>
 
-                            <rect x="690" y="190" width="90" height="30" fill="#0f172a" stroke="#475569"/>
-                            <text x="735" y="208" text-anchor="middle" fill="#cbd5e1" font-size="9">Pfeiffer TMH 071</text>
-                            <rect x="790" y="190" width="70" height="30" fill="#7f1d1d" stroke="#ef4444"/>
-                            <text x="825" y="203" text-anchor="middle" fill="#fff" font-size="8">Edwards AIM-SL</text>
-                            <text id="svg_p_trap_b" x="825" y="215" text-anchor="middle" class="readout-tag">-- Torr</text>
+                            <!-- Central Selector Circle -->
+                            <circle cx="380" cy="190" r="45" fill="url(#metallicGrad)" stroke="#334155" stroke-width="1.2"/>
+                            <text x="380" y="190" class="text-silver">GAS SEL.</text>
 
-                            <!-- Left Manifold (Waste / Roughing) -->
-                            <rect x="30" y="140" width="80" height="35" fill="#7f1d1d" stroke="#ef4444"/>
-                            <text x="70" y="155" text-anchor="middle" fill="#fff" font-size="8">Emergency Relief</text>
-                            
-                            <rect x="30" y="190" width="80" height="35" fill="#1e293b" stroke="#38bdf8"/>
-                            <text x="70" y="205" text-anchor="middle" fill="#fff" font-size="8">Edwards AIM-X</text>
-                            <text id="svg_p_aimx" x="70" y="218" text-anchor="middle" class="readout-tag">-- Torr</text>
+                            <!-- Internal Selector Flow Channels -->
+                            <path id="pipe_valve_smp_a" class="pipe-inner" d="M 425 190 Q 400 215 380 235" stroke="var(--pipe-off)"/>
+                            <path id="pipe_valve_b_wst" class="pipe-inner" d="M 380 145 Q 355 165 335 190" stroke="var(--pipe-off)"/>
+                            <path id="pipe_valve_smp_b" class="pipe-inner" d="M 425 190 Q 400 165 380 145" stroke="var(--pipe-off)"/>
+                            <path id="pipe_valve_a_wst" class="pipe-inner" d="M 380 235 Q 355 210 335 190" stroke="var(--pipe-off)"/>
 
-                            <circle cx="110" cy="265" r="14" fill="#0369a1" stroke="#38bdf8" stroke-width="2"/>
-                            <text x="110" y="268" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold">3W</text>
+                            <!-- Valve Ports -->
+                            <circle cx="425" cy="190" r="3.5" fill="#334155"/>
+                            <circle cx="380" cy="145" r="3.5" fill="#334155"/>
+                            <circle cx="335" cy="190" r="3.5" fill="#334155"/>
+                            <circle cx="380" cy="235" r="3.5" fill="#334155"/>
 
-                            <rect x="60" y="340" width="90" height="30" fill="#0f172a" stroke="#475569"/>
-                            <text x="105" y="358" text-anchor="middle" fill="#cbd5e1" font-size="9">Pfeiffer TMU 071</text>
+                            <!-- Silver Rectangles (Primary Flow & Vacuum Components) -->
+                            <!-- SAMP Box -->
+                            <rect x="540" y="170" width="85" height="40" class="box-silver"/>
+                            <text x="582.5" y="190" class="text-silver">SAMP</text>
 
-                            <rect x="60" y="390" width="90" height="30" fill="#1e293b" stroke="#38bdf8"/>
-                            <text x="105" y="404" text-anchor="middle" fill="#fff" font-size="8">Convectron 375</text>
-                            <text id="svg_p_lovac" x="105" y="415" text-anchor="middle" class="readout-tag">-- Torr</text>
+                            <!-- TRP B & TURBO B Boxes -->
+                            <rect x="335" y="75" width="90" height="40" class="box-silver"/>
+                            <text x="380" y="95" class="text-silver">TRP B</text>
 
-                            <!-- Pumps & Waste -->
-                            <rect x="230" y="410" width="90" height="40" fill="#1e293b" stroke="#38bdf8"/>
-                            <text x="275" y="433" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">Edwards RV3</text>
+                            <rect x="210" y="23" width="90" height="34" class="box-silver"/>
+                            <text x="255" y="40" class="text-silver">TURBO B</text>
 
-                            <path d="M 210 480 L 270 460 L 330 480 L 350 510 L 190 510 Z" fill="#b45309" fill-opacity="0.3" stroke="#f59e0b" stroke-width="2"/>
-                            <text x="270" y="495" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">WASTE</text>
+                            <!-- TRP A & TURBO A Boxes -->
+                            <rect x="335" y="265" width="90" height="40" class="box-silver"/>
+                            <text x="380" y="285" class="text-silver">TRP A</text>
 
-                            <!-- Pipe Lines -->
-                            <path id="pipe_sample_in" class="pipe" d="M 410 40 L 410 90" stroke="var(--pipe-off)"/>
-                            <path id="pipe_waste_out" class="pipe" d="M 300 125 L 110 125 L 110 251" stroke="var(--pipe-off)"/>
-                            <path id="pipe_trap_a" class="pipe" d="M 465 160 L 465 220" stroke="var(--pipe-off)"/>
-                            <path id="pipe_trap_b" class="pipe" d="M 520 110 L 625 110 L 625 180" stroke="var(--pipe-off)"/>
-                            <path id="pipe_ms" class="pipe" d="M 465 270 L 465 340" stroke="var(--pipe-off)"/>
+                            <rect x="210" y="323" width="90" height="34" class="box-silver"/>
+                            <text x="255" y="340" class="text-silver">TURBO A</text>
+
+                            <!-- MS Box -->
+                            <rect x="15" y="170" width="50" height="40" class="box-silver"/>
+                            <text x="40" y="190" class="text-silver">MS</text>
+
+                            <!-- WST TURBO Box -->
+                            <rect x="145" y="215" width="75" height="30" class="box-silver"/>
+                            <text x="182.5" y="230" class="text-silver">WST TURBO</text>
+
+                            <!-- WST Box -->
+                            <rect x="125" y="135" width="55" height="30" class="box-silver"/>
+                            <text x="152.5" y="150" class="text-silver">WST</text>
+
+                            <!-- Smaller Red Rectangles (Penning Pressure Gauges) -->
+                            <!-- WST PENN -->
+                            <rect x="255" y="120" width="80" height="30" class="box-red"/>
+                            <text x="295" y="135" class="text-red">WST PENN</text>
+
+                            <!-- PENNING B -->
+                            <rect x="470" y="23" width="95" height="34" class="box-red"/>
+                            <text x="517.5" y="40" class="text-red">PENNING B</text>
+
+                            <!-- PENNING A -->
+                            <rect x="470" y="323" width="95" height="34" class="box-red"/>
+                            <text x="517.5" y="340" class="text-red">PENNING A</text>
+
+                            <!-- Smaller Blue Rectangle (HiVac Convectron Gauge) -->
+                            <rect x="135" y="275" width="95" height="30" class="box-blue"/>
+                            <text x="182.5" y="290" class="text-blue">HiVac Conv.</text>
+
+                            <!-- Discrete Auxiliary Valve Indicators (V5 & V8) -->
+                            <!-- Roughing Valve V5 -->
+                            <g id="valve_v5_group">
+                                <circle cx="235" cy="150" r="10" fill="#dc2626" stroke="#334155" stroke-width="1.2" id="valve_v5_icon"/>
+                                <path d="M 228 143 L 242 157 M 242 143 L 228 157" stroke="#ffffff" stroke-width="1.5"/>
+                                <text x="235" y="132" font-size="9" font-weight="800" fill="#334155" text-anchor="middle">V5</text>
+                            </g>
+
+                            <!-- HiVac Valve V8 -->
+                            <g id="valve_v8_group">
+                                <circle cx="235" cy="230" r="10" fill="#dc2626" stroke="#334155" stroke-width="1.2" id="valve_v8_icon"/>
+                                <path d="M 228 223 L 242 237 M 242 223 L 228 237" stroke="#ffffff" stroke-width="1.5"/>
+                                <text x="235" y="248" font-size="9" font-weight="800" fill="#334155" text-anchor="middle">V8</text>
+                            </g>
                         </svg>
-                    </div>
-
-                    <div class="flow-controls">
-                        <button id="btn_state_0" class="state-btn" onclick="setFlowState(0)">State 0<br>All Closed</button>
-                        <button id="btn_state_1" class="state-btn" onclick="setFlowState(1)">State 1<br>Smp→A | B→Wst</button>
-                        <button id="btn_state_2" class="state-btn" onclick="setFlowState(2)">State 2<br>Smp→B | A→Wst</button>
-                        <button id="btn_state_3" class="state-btn" onclick="setFlowState(3)">State 3<br>Smp→A | No Wst</button>
-                        <button id="btn_state_4" class="state-btn" onclick="setFlowState(4)">State 4<br>Smp→B | No Wst</button>
-                        <button id="btn_state_5" class="state-btn" onclick="setFlowState(5)">State 5<br>Trp A→Wst | No Smp</button>
-                        <button id="btn_state_6" class="state-btn" onclick="setFlowState(6)">State 6<br>Trp B→Wst | No Smp</button>
                     </div>
                 </div>
 
@@ -463,91 +588,243 @@
         let currentState = 0;
         let ws = null;
 
+        // State tracking for waste valve solenoids V5 & V8
+        let wasteValves = {
+            'V5': false, // Roughing Valve (CH 204)
+            'V8': false  // HiVac Valve (CH 205)
+        };
+
         const pipeOn = 'var(--pipe-on)';
         const pipeOff = 'var(--pipe-off)';
         const MAX_HISTORY = 30;
 
+        function updateWastePipes() {
+            const pRough = document.getElementById('pipe_waste_rough');
+            const pHivac = document.getElementById('pipe_waste_hivac');
+            const v5Icon = document.getElementById('valve_v5_icon');
+            const v8Icon = document.getElementById('valve_v8_icon');
+            const pPenWst = document.getElementById('pipe_penning_wst');
+            const pHivacConv = document.getElementById('pipe_hivac_conv');
+
+            const isV5Open = Boolean(wasteValves['V5']);
+            const isV8Open = Boolean(wasteValves['V8']);
+
+            if (pRough) pRough.setAttribute('stroke', isV5Open ? pipeOn : pipeOff);
+            if (pHivac) pHivac.setAttribute('stroke', isV8Open ? pipeOn : pipeOff);
+            if (v5Icon) v5Icon.setAttribute('fill', isV5Open ? '#16a34a' : '#dc2626');
+            if (v8Icon) v8Icon.setAttribute('fill', isV8Open ? '#16a34a' : '#dc2626');
+
+            if (pPenWst) {
+                const wasteLineActive = isV5Open || isV8Open || [1, 2, 5, 6].includes(currentState);
+                pPenWst.setAttribute('stroke', wasteLineActive ? pipeOn : pipeOff);
+            }
+            if (pHivacConv) {
+                pHivacConv.setAttribute('stroke', isV8Open ? pipeOn : pipeOff);
+            }
+        }
+
         function applyVisualFlowState(stateNum) {
             currentState = stateNum;
 
-            for (let i = 0; i <= 6; i++) {
+            for (let i = 1; i <= 6; i++) {
                 const btn = document.getElementById(`btn_state_${i}`);
                 if (btn) btn.classList.toggle('active', i === stateNum);
             }
 
             const pSampleIn = document.getElementById('pipe_sample_in');
+            const pValveSmpA = document.getElementById('pipe_valve_smp_a');
+            const pValveBWst = document.getElementById('pipe_valve_b_wst');
+            const pValveSmpB = document.getElementById('pipe_valve_smp_b');
+            const pValveAWst = document.getElementById('pipe_valve_a_wst');
+            const pTrapAIn = document.getElementById('pipe_trap_a_in');
+            const pTrapBIn = document.getElementById('pipe_trap_b_in');
             const pWasteOut = document.getElementById('pipe_waste_out');
-            const pTrapA = document.getElementById('pipe_trap_a');
-            const pTrapB = document.getElementById('pipe_trap_b');
-            const pMs = document.getElementById('pipe_ms');
+
+            const pTrapBHeader = document.getElementById('pipe_trap_b_header');
+            const pPenningB = document.getElementById('pipe_penning_b');
+            const pTrapBMs = document.getElementById('pipe_trap_b_ms');
+            const pTurboBMs = document.getElementById('pipe_turbo_b_ms');
+
+            const pTrapAHeader = document.getElementById('pipe_trap_a_header');
+            const pPenningA = document.getElementById('pipe_penning_a');
+            const pTrapAMs = document.getElementById('pipe_trap_a_ms');
+            const pTurboAMs = document.getElementById('pipe_turbo_a_ms');
+
+            const pMsOut = document.getElementById('pipe_ms_out');
 
             let logDesc = "";
 
             switch (stateNum) {
                 case 0:
                     pSampleIn.setAttribute('stroke', pipeOff);
+                    pValveSmpA.setAttribute('stroke', pipeOff);
+                    pValveBWst.setAttribute('stroke', pipeOff);
+                    pValveSmpB.setAttribute('stroke', pipeOff);
+                    pValveAWst.setAttribute('stroke', pipeOff);
+                    pTrapAIn.setAttribute('stroke', pipeOff);
+                    pTrapBIn.setAttribute('stroke', pipeOff);
                     pWasteOut.setAttribute('stroke', pipeOff);
-                    pTrapA.setAttribute('stroke', pipeOff);
-                    pTrapB.setAttribute('stroke', pipeOff);
-                    pMs.setAttribute('stroke', pipeOff);
+
+                    pTrapBHeader.setAttribute('stroke', pipeOff);
+                    pPenningB.setAttribute('stroke', pipeOff);
+                    pTrapBMs.setAttribute('stroke', pipeOff);
+                    pTurboBMs.setAttribute('stroke', pipeOff);
+
+                    pTrapAHeader.setAttribute('stroke', pipeOff);
+                    pPenningA.setAttribute('stroke', pipeOff);
+                    pTrapAMs.setAttribute('stroke', pipeOff);
+                    pTurboAMs.setAttribute('stroke', pipeOff);
+
+                    pMsOut.setAttribute('stroke', pipeOff);
                     logDesc = "State 0: All valves closed / isolated.";
                     break;
 
                 case 1:
                     pSampleIn.setAttribute('stroke', pipeOn);
+                    pValveSmpA.setAttribute('stroke', pipeOn);
+                    pValveBWst.setAttribute('stroke', pipeOn);
+                    pValveSmpB.setAttribute('stroke', pipeOff);
+                    pValveAWst.setAttribute('stroke', pipeOff);
+                    pTrapAIn.setAttribute('stroke', pipeOn);
+                    pTrapBIn.setAttribute('stroke', pipeOn);
                     pWasteOut.setAttribute('stroke', pipeOn);
-                    pTrapA.setAttribute('stroke', pipeOn);
-                    pTrapB.setAttribute('stroke', pipeOn);
-                    pMs.setAttribute('stroke', pipeOn);
+
+                    pTrapAHeader.setAttribute('stroke', pipeOn);
+                    pPenningA.setAttribute('stroke', pipeOn);
+                    pTrapAMs.setAttribute('stroke', pipeOn);
+                    pTurboAMs.setAttribute('stroke', pipeOn);
+
+                    pTrapBHeader.setAttribute('stroke', pipeOff);
+                    pPenningB.setAttribute('stroke', pipeOn);
+                    pTrapBMs.setAttribute('stroke', pipeOff);
+                    pTurboBMs.setAttribute('stroke', pipeOff);
+
+                    pMsOut.setAttribute('stroke', pipeOn);
                     logDesc = "State 1: Sample -> Trap A | Trap B -> Waste";
                     break;
 
                 case 2:
                     pSampleIn.setAttribute('stroke', pipeOn);
+                    pValveSmpA.setAttribute('stroke', pipeOff);
+                    pValveBWst.setAttribute('stroke', pipeOff);
+                    pValveSmpB.setAttribute('stroke', pipeOn);
+                    pValveAWst.setAttribute('stroke', pipeOn);
+                    pTrapAIn.setAttribute('stroke', pipeOn);
+                    pTrapBIn.setAttribute('stroke', pipeOn);
                     pWasteOut.setAttribute('stroke', pipeOn);
-                    pTrapA.setAttribute('stroke', pipeOn);
-                    pTrapB.setAttribute('stroke', pipeOn);
-                    pMs.setAttribute('stroke', pipeOn);
+
+                    pTrapBHeader.setAttribute('stroke', pipeOn);
+                    pPenningB.setAttribute('stroke', pipeOn);
+                    pTrapBMs.setAttribute('stroke', pipeOn);
+                    pTurboBMs.setAttribute('stroke', pipeOn);
+
+                    pTrapAHeader.setAttribute('stroke', pipeOff);
+                    pPenningA.setAttribute('stroke', pipeOn);
+                    pTrapAMs.setAttribute('stroke', pipeOff);
+                    pTurboAMs.setAttribute('stroke', pipeOff);
+
+                    pMsOut.setAttribute('stroke', pipeOn);
                     logDesc = "State 2: Sample -> Trap B | Trap A -> Waste";
                     break;
 
                 case 3:
                     pSampleIn.setAttribute('stroke', pipeOn);
+                    pValveSmpA.setAttribute('stroke', pipeOn);
+                    pValveBWst.setAttribute('stroke', pipeOff);
+                    pValveSmpB.setAttribute('stroke', pipeOff);
+                    pValveAWst.setAttribute('stroke', pipeOff);
+                    pTrapAIn.setAttribute('stroke', pipeOn);
+                    pTrapBIn.setAttribute('stroke', pipeOff);
                     pWasteOut.setAttribute('stroke', pipeOff);
-                    pTrapA.setAttribute('stroke', pipeOn);
-                    pTrapB.setAttribute('stroke', pipeOff);
-                    pMs.setAttribute('stroke', pipeOn);
+
+                    pTrapAHeader.setAttribute('stroke', pipeOn);
+                    pPenningA.setAttribute('stroke', pipeOn);
+                    pTrapAMs.setAttribute('stroke', pipeOn);
+                    pTurboAMs.setAttribute('stroke', pipeOn);
+
+                    pTrapBHeader.setAttribute('stroke', pipeOff);
+                    pPenningB.setAttribute('stroke', pipeOff);
+                    pTrapBMs.setAttribute('stroke', pipeOff);
+                    pTurboBMs.setAttribute('stroke', pipeOff);
+
+                    pMsOut.setAttribute('stroke', pipeOn);
                     logDesc = "State 3: Sample -> Trap A | No Waste";
                     break;
 
                 case 4:
                     pSampleIn.setAttribute('stroke', pipeOn);
+                    pValveSmpA.setAttribute('stroke', pipeOff);
+                    pValveBWst.setAttribute('stroke', pipeOff);
+                    pValveSmpB.setAttribute('stroke', pipeOn);
+                    pValveAWst.setAttribute('stroke', pipeOff);
+                    pTrapAIn.setAttribute('stroke', pipeOff);
+                    pTrapBIn.setAttribute('stroke', pipeOn);
                     pWasteOut.setAttribute('stroke', pipeOff);
-                    pTrapA.setAttribute('stroke', pipeOff);
-                    pTrapB.setAttribute('stroke', pipeOn);
-                    pMs.setAttribute('stroke', pipeOn);
+
+                    pTrapBHeader.setAttribute('stroke', pipeOn);
+                    pPenningB.setAttribute('stroke', pipeOn);
+                    pTrapBMs.setAttribute('stroke', pipeOn);
+                    pTurboBMs.setAttribute('stroke', pipeOn);
+
+                    pTrapAHeader.setAttribute('stroke', pipeOff);
+                    pPenningA.setAttribute('stroke', pipeOff);
+                    pTrapAMs.setAttribute('stroke', pipeOff);
+                    pTurboAMs.setAttribute('stroke', pipeOff);
+
+                    pMsOut.setAttribute('stroke', pipeOn);
                     logDesc = "State 4: Sample -> Trap B | No Waste";
                     break;
 
                 case 5:
                     pSampleIn.setAttribute('stroke', pipeOff);
+                    pValveSmpA.setAttribute('stroke', pipeOff);
+                    pValveBWst.setAttribute('stroke', pipeOff);
+                    pValveSmpB.setAttribute('stroke', pipeOff);
+                    pValveAWst.setAttribute('stroke', pipeOn);
+                    pTrapAIn.setAttribute('stroke', pipeOn);
+                    pTrapBIn.setAttribute('stroke', pipeOff);
                     pWasteOut.setAttribute('stroke', pipeOn);
-                    pTrapA.setAttribute('stroke', pipeOn);
-                    pTrapB.setAttribute('stroke', pipeOff);
-                    pMs.setAttribute('stroke', pipeOff);
+
+                    pTrapAHeader.setAttribute('stroke', pipeOff);
+                    pPenningA.setAttribute('stroke', pipeOn);
+                    pTrapAMs.setAttribute('stroke', pipeOff);
+                    pTurboAMs.setAttribute('stroke', pipeOff);
+
+                    pTrapBHeader.setAttribute('stroke', pipeOff);
+                    pPenningB.setAttribute('stroke', pipeOff);
+                    pTrapBMs.setAttribute('stroke', pipeOff);
+                    pTurboBMs.setAttribute('stroke', pipeOff);
+
+                    pMsOut.setAttribute('stroke', pipeOff);
                     logDesc = "State 5: Trap A -> Waste | No Sample In";
                     break;
 
                 case 6:
                     pSampleIn.setAttribute('stroke', pipeOff);
+                    pValveSmpA.setAttribute('stroke', pipeOff);
+                    pValveBWst.setAttribute('stroke', pipeOn);
+                    pValveSmpB.setAttribute('stroke', pipeOff);
+                    pValveAWst.setAttribute('stroke', pipeOff);
+                    pTrapAIn.setAttribute('stroke', pipeOff);
+                    pTrapBIn.setAttribute('stroke', pipeOn);
                     pWasteOut.setAttribute('stroke', pipeOn);
-                    pTrapA.setAttribute('stroke', pipeOff);
-                    pTrapB.setAttribute('stroke', pipeOn);
-                    pMs.setAttribute('stroke', pipeOff);
+
+                    pTrapBHeader.setAttribute('stroke', pipeOff);
+                    pPenningB.setAttribute('stroke', pipeOn);
+                    pTrapBMs.setAttribute('stroke', pipeOff);
+                    pTurboBMs.setAttribute('stroke', pipeOff);
+
+                    pTrapAHeader.setAttribute('stroke', pipeOff);
+                    pPenningA.setAttribute('stroke', pipeOff);
+                    pTrapAMs.setAttribute('stroke', pipeOff);
+                    pTurboAMs.setAttribute('stroke', pipeOff);
+
+                    pMsOut.setAttribute('stroke', pipeOff);
                     logDesc = "State 6: Trap B -> Waste | No Sample In";
                     break;
             }
 
+            updateWastePipes();
             return logDesc;
         }
 
@@ -564,10 +841,54 @@
             }
         }
 
+        function toggleWasteValve(valveKey) {
+            wasteValves[valveKey] = !wasteValves[valveKey];
+            const isOpen = wasteValves[valveKey];
+            
+            const btnId = valveKey === 'V5' ? 'btn_roughing_pump' : 'btn_hivac_pump';
+            const lblId = valveKey === 'V5' ? 'lbl_v5' : 'lbl_v8';
+            
+            const btn = document.getElementById(btnId);
+            const lbl = document.getElementById(lblId);
+
+            if (btn) btn.classList.toggle('active', isOpen);
+            if (lbl) lbl.innerText = isOpen ? 'OPEN' : 'CLOSED';
+
+            updateWastePipes();
+
+            const name = valveKey === 'V5' ? 'Roughing Valve (V5)' : 'HiVac Valve (V8)';
+            injectLocalLog("CMD", `${name} set to ${isOpen ? 'OPEN' : 'CLOSED'}`);
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    command: "TOGGLE_VALVE",
+                    valve: valveKey,
+                    state: isOpen,
+                    timestamp: new Date().toISOString()
+                }));
+            }
+        }
+
         function triggerEstop() {
-            const logDesc = "EMERGENCY SHUTDOWN INITIATED. ALL VALVES CLOSED.";
+            const logDesc = "SHUTDOWN INITIATED. ALL VALVES CLOSED.";
             applyVisualFlowState(0);
-            injectLocalLog("DANGER", logDesc);
+
+            // Deactivate Waste Valve UI Controls
+            wasteValves['V5'] = false;
+            wasteValves['V8'] = false;
+            
+            const btnV5 = document.getElementById('btn_roughing_pump');
+            const btnV8 = document.getElementById('btn_hivac_pump');
+            if (btnV5) btnV5.classList.remove('active');
+            if (btnV8) btnV8.classList.remove('active');
+
+            const lblV5 = document.getElementById('lbl_v5');
+            const lblV8 = document.getElementById('lbl_v8');
+            if (lblV5) lblV5.innerText = 'CLOSED';
+            if (lblV8) lblV8.innerText = 'CLOSED';
+
+            updateWastePipes();
+            injectLocalLog("WARN", logDesc);
 
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({
@@ -599,6 +920,7 @@
                 ws.send(JSON.stringify({
                     command: "SET_MODE",
                     auto_mode: isAutoMode,
+                    mode: isAutoMode ? "AUTO" : "MANUAL",
                     timestamp: new Date().toISOString()
                 }));
             }
@@ -606,13 +928,17 @@
 
         function injectLocalLog(level, msg) {
             const box = document.getElementById("logBox");
+            if (!box) return;
+
             const entry = document.createElement("div");
             entry.className = "log-entry";
             const timeStr = new Date().toLocaleTimeString('en-US', { hour12: false });
             
             let tagClass = "tag-cmd";
-            if (level === "DANGER") tagClass = "tag-danger";
-            if (level === "WARN") tagClass = "tag-warn";
+            if (level === "DANGER" || level === "ERROR") tagClass = "tag-danger";
+            if (level === "WARN" || level === "WARNING") tagClass = "tag-warn";
+            if (level === "SUCCESS") tagClass = "tag-success";
+            if (level === "INFO") tagClass = "tag-info";
             
             entry.innerHTML = `<span class="log-time">${timeStr}</span><span class="log-tag ${tagClass}">${level}</span><span class="log-msg" style="font-weight: 600;">${msg}</span>`;
             box.appendChild(entry);
@@ -620,9 +946,9 @@
         }
 
         // CHART CONFIGURATIONS
-        const gridColor = '#334155';
-        const tickColor = '#94a3b8';
-        const legendColor = '#cbd5e1';
+        const gridColor = '#dbd4c8';
+        const tickColor = '#57534e';
+        const textColor = '#1c1917';
 
         const ctxP = document.getElementById('pressureChart').getContext('2d');
         const pressureChart = new Chart(ctxP, {
@@ -630,18 +956,29 @@
             data: {
                 labels: [],
                 datasets: [
-                    { label: 'Chamber (115)', borderColor: '#38bdf8', data: [], tension: 0.1, borderWidth: 2, pointRadius: 0 },
-                    { label: 'Trap (116)', borderColor: '#fbbf24', data: [], tension: 0.1, borderWidth: 2, pointRadius: 0 },
-                    { label: 'LoVac (119)', borderColor: '#34d399', data: [], tension: 0.1, borderWidth: 2, pointRadius: 0 }
+                    { label: 'Chamber (115)', borderColor: '#0284c7', data: [], tension: 0.1, borderWidth: 2, pointRadius: 0 },
+                    { label: 'Trap (116)', borderColor: '#d97706', data: [], tension: 0.1, borderWidth: 2, pointRadius: 0 },
+                    { label: 'LoVac (119)', borderColor: '#16a34a', data: [], tension: 0.1, borderWidth: 2, pointRadius: 0 }
                 ]
             },
             options: {
-                responsive: true, maintainAspectRatio: false, animation: false,
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
                 scales: {
                     x: { ticks: { color: tickColor, font: { size: 9 } }, grid: { display: false } },
-                    y: { type: 'logarithmic', min: 1e-8, max: 1e3, grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 9 } } }
+                    y: { 
+                        type: 'logarithmic',
+                        min: 1e-8,
+                        max: 1e3,
+                        ticks: { color: tickColor, font: { size: 9 } }, 
+                        grid: { color: gridColor },
+                        title: { display: true, text: 'Torr', color: tickColor, font: { size: 10, weight: 'bold' } }
+                    }
                 },
-                plugins: { legend: { labels: { color: legendColor, font: { size: 10 } } } }
+                plugins: {
+                    legend: { labels: { color: textColor, font: { size: 10, weight: '600' }, boxWidth: 12 } }
+                }
             }
         });
 
@@ -651,110 +988,182 @@
             data: {
                 labels: [],
                 datasets: [
-                    { label: 'Trap A HR (104)', borderColor: '#f43f5e', data: [], tension: 0.1, borderWidth: 2, pointRadius: 0 },
-                    { label: 'Trap B HR (101)', borderColor: '#fbbf24', data: [], tension: 0.1, borderWidth: 2, pointRadius: 0 }
+                    { label: 'Eng B HR (101)', borderColor: '#2563eb', data: [], tension: 0.1, borderWidth: 2, pointRadius: 0 },
+                    { label: 'Eng B PV (102)', borderColor: '#0d9488', data: [], tension: 0.1, borderWidth: 2, pointRadius: 0 },
+                    { label: 'Eng A PV (103)', borderColor: '#ea580c', data: [], tension: 0.1, borderWidth: 2, pointRadius: 0 },
+                    { label: 'Eng A HR (104)', borderColor: '#dc2626', data: [], tension: 0.1, borderWidth: 2, pointRadius: 0 }
                 ]
             },
             options: {
-                responsive: true, maintainAspectRatio: false, animation: false,
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
                 scales: {
                     x: { ticks: { color: tickColor, font: { size: 9 } }, grid: { display: false } },
-                    y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 9 } } }
+                    y: { 
+                        ticks: { color: tickColor, font: { size: 9 } }, 
+                        grid: { color: gridColor },
+                        title: { display: true, text: '°C', color: tickColor, font: { size: 10, weight: 'bold' } }
+                    }
                 },
-                plugins: { legend: { labels: { color: legendColor, font: { size: 10 } } } }
+                plugins: {
+                    legend: { labels: { color: textColor, font: { size: 10, weight: '600' }, boxWidth: 12 } }
+                }
             }
         });
 
-        // REAL-TIME WEBSOCKET FEED
+        function pushChartData(chart, label, values) {
+            chart.data.labels.push(label);
+            values.forEach((v, idx) => {
+                const numVal = (v !== null && v !== undefined && !isNaN(v)) ? Number(v) : null;
+                chart.data.datasets[idx].data.push(numVal);
+            });
+
+            if (chart.data.labels.length > MAX_HISTORY) {
+                chart.data.labels.shift();
+                chart.data.datasets.forEach(ds => ds.data.shift());
+            }
+            chart.update('none');
+        }
+
+        let lastLogCount = 0;
+        function renderLogs(logs) {
+            if (!logs || logs.length === lastLogCount) return;
+            lastLogCount = logs.length;
+            const box = document.getElementById("logBox");
+            
+            const latestLog = logs[logs.length - 1];
+            if (!latestLog) return;
+            const entry = document.createElement("div");
+            entry.className = "log-entry";
+            let tagClass = latestLog.level === "SUCCESS" ? "tag-success" : (latestLog.level === "WARN" ? "tag-warn" : (latestLog.level === "ERROR" ? "tag-danger" : "tag-info"));
+            entry.innerHTML = `<span class="log-time">${latestLog.time}</span><span class="log-tag ${tagClass}">${latestLog.level}</span><span class="log-msg">${latestLog.msg}</span>`;
+            box.appendChild(entry);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        // TELEMETRY HANDLER
+        function updateTelemetry(data) {
+            if (!data) return;
+
+            if (data.status) {
+                document.getElementById("status").innerText = data.status;
+            }
+            if (data.device) document.getElementById("device").innerText = data.device;
+            if (data.timestamp) document.getElementById("timestamp").innerText = data.timestamp;
+
+            // Temperature Readouts
+            if (data.ch101 !== undefined) document.getElementById("ch101").innerText = typeof data.ch101 === 'number' ? `${data.ch101.toFixed(2)} °C` : data.ch101;
+            if (data.ch102 !== undefined) document.getElementById("ch102").innerText = typeof data.ch102 === 'number' ? `${data.ch102.toFixed(2)} °C` : data.ch102;
+            if (data.ch103 !== undefined) document.getElementById("ch103").innerText = typeof data.ch103 === 'number' ? `${data.ch103.toFixed(2)} °C` : data.ch103;
+            if (data.ch104 !== undefined) document.getElementById("ch104").innerText = typeof data.ch104 === 'number' ? `${data.ch104.toFixed(2)} °C` : data.ch104;
+
+            // Chamber & Trap Readouts
+            if (data.ch115_p !== undefined) document.getElementById("ch115_p").innerText = data.ch115_p;
+            if (data.ch115_v !== undefined) document.getElementById("ch115_v").innerText = data.ch115_v;
+            if (data.ch113 !== undefined) document.getElementById("ch113").innerText = data.ch113;
+
+            if (data.ch116_p !== undefined) document.getElementById("ch116_p").innerText = data.ch116_p;
+            if (data.ch116_v !== undefined) document.getElementById("ch116_v").innerText = data.ch116_v;
+            if (data.ch112 !== undefined) document.getElementById("ch112").innerText = data.ch112;
+
+            if (data.ch118_p !== undefined) document.getElementById("ch118_p").innerText = data.ch118_p;
+            if (data.ch119_p !== undefined) document.getElementById("ch119_p").innerText = data.ch119_p;
+            if (data.ch119_v !== undefined) document.getElementById("ch119_v").innerText = data.ch119_v;
+
+            // Synchronize Valve Diagram State
+            if (data.control && data.control.flow_state !== undefined) {
+                if (currentState !== data.control.flow_state) {
+                    applyVisualFlowState(data.control.flow_state);
+                }
+            }
+
+            // Synchronize Waste Valve Button States from Telemetry
+            if (data.control) {
+                if (data.control.v5 !== undefined) {
+                    wasteValves['V5'] = Boolean(data.control.v5);
+                    const btn = document.getElementById('btn_roughing_pump');
+                    const lbl = document.getElementById('lbl_v5');
+                    if (btn) btn.classList.toggle('active', wasteValves['V5']);
+                    if (lbl) lbl.innerText = wasteValves['V5'] ? 'OPEN' : 'CLOSED';
+                }
+                if (data.control.v8 !== undefined) {
+                    wasteValves['V8'] = Boolean(data.control.v8);
+                    const btn = document.getElementById('btn_hivac_pump');
+                    const lbl = document.getElementById('lbl_v8');
+                    if (btn) btn.classList.toggle('active', wasteValves['V8']);
+                    if (lbl) lbl.innerText = wasteValves['V8'] ? 'OPEN' : 'CLOSED';
+                }
+                updateWastePipes();
+            }
+
+            // Synchronize UI Mode
+            if (data.mode) {
+                const autoActive = data.mode.includes("AUTOMATIC");
+                if (isAutoMode !== autoActive) {
+                    isAutoMode = autoActive;
+                    document.getElementById('btn_mode').innerText = isAutoMode ? "SWITCH TO MANUAL MODE" : "SWITCH TO AUTO MODE";
+                    document.getElementById('mode_status').innerText = `CURRENT: ${data.mode}`;
+                }
+            }
+
+            // Push Data to Charts
+            if (data.time_str) {
+                pushChartData(pressureChart, data.time_str, [
+                    data.ch115_p_val,
+                    data.ch116_p_val,
+                    data.ch119_p_val
+                ]);
+
+                pushChartData(tempChart, data.time_str, [
+                    data.ch101_val,
+                    data.ch102_val,
+                    data.ch103_val,
+                    data.ch104_val
+                ]);
+            }
+
+            // Append Logs
+            if (data.logs) {
+                renderLogs(data.logs);
+            }
+        }
+
+        // WEBSOCKET CONNECTOR
         function connectWebSocket() {
-            const host = window.location.host;
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            ws = new WebSocket(`${protocol}//${host}/ws`);
+            const wsUrl = `${protocol}//${window.location.host}/ws/telemetry`;
+            
+            ws = new WebSocket(wsUrl);
 
             ws.onopen = () => {
-                document.getElementById('status').innerText = "CONNECTED";
-                document.getElementById('status').style.background = "#064e3b";
-                injectLocalLog("INFO", "WebSocket telemetry channel established.");
+                document.getElementById("status").innerText = "CONNECTED";
+                injectLocalLog("INFO", "Connected to telemetry server.");
             };
 
             ws.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-
-                // Update text elements
-                if (data.status) document.getElementById('status').innerText = data.status;
-                if (data.device) document.getElementById('device').innerText = data.device;
-                if (data.timestamp) document.getElementById('timestamp').innerText = data.timestamp;
-
-                if (data.ch104) {
-                    document.getElementById('ch104').innerText = data.ch104;
-                    document.getElementById('svg_temp_a').textContent = data.ch104;
+                try {
+                    const telemetry = JSON.parse(event.data);
+                    updateTelemetry(telemetry);
+                } catch (err) {
+                    console.error("Failed to parse telemetry JSON:", err);
                 }
-                if (data.ch103) document.getElementById('ch103').innerText = data.ch103;
-                if (data.ch101) {
-                    document.getElementById('ch101').innerText = data.ch101;
-                    document.getElementById('svg_temp_b').textContent = data.ch101;
-                }
-                if (data.ch102) document.getElementById('ch102').innerText = data.ch102;
-
-                if (data.ch115_p) {
-                    document.getElementById('ch115_p').innerText = data.ch115_p;
-                    document.getElementById('svg_p_aimx').textContent = data.ch115_p;
-                }
-                if (data.ch115_v) document.getElementById('ch115_v').innerText = data.ch115_v;
-                
-                if (data.ch116_p) {
-                    document.getElementById('ch116_p').innerText = data.ch116_p;
-                    document.getElementById('svg_p_trap_a').textContent = data.ch116_p;
-                    document.getElementById('svg_p_trap_b').textContent = data.ch116_p;
-                }
-                if (data.ch116_v) document.getElementById('ch116_v').innerText = data.ch116_v;
-
-                if (data.ch119_p) {
-                    document.getElementById('ch119_p').innerText = data.ch119_p;
-                    document.getElementById('svg_p_lovac').textContent = data.ch119_p;
-                }
-                if (data.ch119_v) document.getElementById('ch119_v').innerText = data.ch119_v;
-
-                if (data.ch112) document.getElementById('ch112').innerText = data.ch112;
-                if (data.ch113) document.getElementById('ch113').innerText = data.ch113;
-
-                // Sync Flow State
-                if (data.flow_state !== undefined && data.flow_state !== currentState) {
-                    applyVisualFlowState(data.flow_state);
-                }
-
-                // Push Plot Data
-                const timeStr = data.time_str || new Date().toLocaleTimeString('en-US', { hour12: false });
-                
-                pressureChart.data.labels.push(timeStr);
-                pressureChart.data.datasets[0].data.push(data.ch115_p_val ?? null);
-                pressureChart.data.datasets[1].data.push(data.ch116_p_val ?? null);
-                pressureChart.data.datasets[2].data.push(data.ch119_p_val ?? null);
-
-                tempChart.data.labels.push(timeStr);
-                tempChart.data.datasets[0].data.push(data.ch104_val ?? null);
-                tempChart.data.datasets[1].data.push(data.ch101_val ?? null);
-
-                if (pressureChart.data.labels.length > MAX_HISTORY) {
-                    pressureChart.data.labels.shift();
-                    pressureChart.data.datasets.forEach(ds => ds.data.shift());
-                    tempChart.data.labels.shift();
-                    tempChart.data.datasets.forEach(ds => ds.data.shift());
-                }
-
-                pressureChart.update();
-                tempChart.update();
             };
 
             ws.onclose = () => {
-                document.getElementById('status').innerText = "DISCONNECTED";
-                document.getElementById('status').style.background = "#78350f";
-                setTimeout(connectWebSocket, 3000);
+                document.getElementById("status").innerText = "DISCONNECTED";
+                setTimeout(connectWebSocket, 2000);
+            };
+
+            ws.onerror = (err) => {
+                console.error("WebSocket error:", err);
             };
         }
 
-        // Initialize WebSocket connection on boot
-        connectWebSocket();
+        window.addEventListener('DOMContentLoaded', () => {
+            connectWebSocket();
+            updateWastePipes();
+        });
     </script>
 </body>
 </html>
