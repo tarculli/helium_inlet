@@ -80,40 +80,50 @@ def process_command_queue(agilent_inst):
     Executes pending commands against the Agilent hardware driver.
     Called periodically within the hardware I/O loop (`loops/io_loop.py`).
     """
-    if command_queue.empty():
-        return
+    while not command_queue.empty():
+        try:
+            # Non-blocking fetch from FIFO queue
+            cmd_data = command_queue.get_nowait()
+            cmd_type = cmd_data.get("cmd")
 
-    try:
-        # Non-blocking fetch from FIFO queue
-        cmd_data = command_queue.get_nowait()
-        cmd_type = cmd_data.get("cmd")
+            # 1. Valve Flow State Command (Gas Selector)
+            if cmd_type == "SET_FLOW_STATE":
+                state_num = cmd_data.get("state")
+                log_event(f"Applying Flow State {state_num}...")
+                if agilent_inst.set_flow_state(state_num):
+                    telemetry_data["control"]["flow_state"] = state_num
+                    log_event(f"Flow State {state_num} applied successfully.", "SUCCESS")
+                else:
+                    log_event(f"Failed to apply Flow State {state_num}.", "ERROR")
 
-        # 1. Valve Flow State Command
-        if cmd_type == "SET_FLOW_STATE":
-            state_num = cmd_data.get("state")
-            log_event(f"Applying Flow State {state_num}...")
-            if agilent_inst.set_flow_state(state_num):
-                telemetry_data["control"]["flow_state"] = state_num
-                log_event(f"Flow State {state_num} applied successfully.", "SUCCESS")
-            else:
-                log_event(f"Failed to apply Flow State {state_num}.", "ERROR")
+            # 2. Discrete Valve Toggle Command (V5 Roughing / V8 HiVac)
+            elif cmd_type == "TOGGLE_VALVE":
+                valve_id = cmd_data.get("valve")     # 'V5' or 'V8'
+                open_state = cmd_data.get("state")   # True (Open) or False (Closed)
+                action_label = "OPEN" if open_state else "CLOSE"
+                
+                log_event(f"Setting Valve {valve_id} to {action_label}...")
+                if agilent_inst.set_single_valve(valve_key=valve_id, open_valve=open_state):
+                    log_event(f"Valve {valve_id} set to {action_label} successfully.", "SUCCESS")
+                else:
+                    log_event(f"Failed to toggle Valve {valve_id}.", "ERROR")
 
-        # 2. Sequence Mode Command (Auto vs Manual)
-        elif cmd_type == "SET_MODE":
-            is_auto = cmd_data.get("auto_mode", False)
-            telemetry_data["mode"] = "AUTOMATIC ACQUISITION" if is_auto else "MANUAL OVERRIDE"
-            log_event(f"Mode set to {telemetry_data['mode']}.", "SUCCESS")
+            # 3. Sequence Mode Command (Auto vs Manual)
+            elif cmd_type == "SET_MODE":
+                is_auto = cmd_data.get("auto_mode", False)
+                telemetry_data["mode"] = "AUTOMATIC ACQUISITION" if is_auto else "MANUAL OVERRIDE"
+                log_event(f"Mode set to {telemetry_data['mode']}.", "SUCCESS")
 
-        # 3. Close All Valves Command
-        elif cmd_type == "ESTOP":
-            telemetry_data["mode"] = "MANUAL OVERRIDE"
-            log_event("ESTOP INITIATED! Closing all valves.", "WARN")
-            if agilent_inst.emergency_stop():
-                telemetry_data["control"]["flow_state"] = 0
-                log_event("ESTOP Complete: All valves depressurized.", "SUCCESS")
-            else:
-                log_event("ESTOP failed on hardware!", "ERROR")
+            # 4. Close All Valves Command (E-STOP)
+            elif cmd_type == "ESTOP":
+                telemetry_data["mode"] = "MANUAL OVERRIDE"
+                log_event("ESTOP INITIATED! Closing all valves.", "WARN")
+                if agilent_inst.emergency_stop():
+                    telemetry_data["control"]["flow_state"] = 0
+                    log_event("ESTOP Complete: All valves depressurized.", "SUCCESS")
+                else:
+                    log_event("ESTOP failed on hardware!", "ERROR")
 
-        command_queue.task_done()
-    except Empty:
-        pass
+            command_queue.task_done()
+        except Empty:
+            break

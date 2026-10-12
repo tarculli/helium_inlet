@@ -95,7 +95,7 @@ class Agilent34970A:
             return None, None
 
     def set_flow_state(self, state_num: int) -> bool:
-        """Energizes/de-energizes multiplexer relays to match target valve flow state."""
+        """Energizes/de-energizes gas selector relays (V1-V4) without altering auxiliary valves (V5, V8)."""
         if not self.connected or not self.device:
             return False
 
@@ -104,36 +104,80 @@ class Agilent34970A:
 
         active_valves = STATE_VALVE_MAP[state_num]
 
-        # Map valve names to 3-digit hardware channels (e.g., Slot 2 + Ch 8 = 208)
+        # Restrict flow state updates strictly to gas selector valves V1-V4
+        selector_keys = ["V1", "V2", "V3", "V4"]
         all_channels = {
-            v: str(VALVE_SLOT_PREFIX + int(ch))
-            for v, ch in VALVE_CHANNELS.items()
+            v: str(VALVE_SLOT_PREFIX + int(VALVE_CHANNELS[v]))
+            for v in selector_keys if v in VALVE_CHANNELS
         }
 
-        # Segregate channels to close (energize OPEN) vs open (depressurize CLOSED)
         close_list = [all_channels[v] for v in active_valves if v in all_channels]
         open_list = [ch for ch in all_channels.values() if ch not in close_list]
 
         try:
             self.device.reset_input_buffer()
 
-            # Open non-active valve relays first to prevent safe over-pressurization
             if open_list:
-                self.device.write(
-                    f"ROUTe:OPEn (@{','.join(open_list)})\r\n".encode("utf-8")
-                )
+                self.device.write(f"ROUTe:OPEn (@{','.join(open_list)})\r\n".encode("utf-8"))
+                self.device.flush()
                 time.sleep(0.1)
 
-            # Close active valve relays to energize selected path
             if close_list:
-                self.device.write(
-                    f"ROUTe:CLOSe (@{','.join(close_list)})\r\n".encode("utf-8")
-                )
+                self.device.write(f"ROUTe:CLOSe (@{','.join(close_list)})\r\n".encode("utf-8"))
+                self.device.flush()
                 time.sleep(0.1)
 
             return True
         except Exception as e:
             print(f"[Agilent Hardware Error] set_flow_state failed: {e}")
+            self.connected = False
+            return False
+
+    def set_single_valve(self, valve_key: str, open_valve: bool) -> bool:
+        """Directly energizes (opens) or de-energizes (closes) a single valve relay independently."""
+        if not self.connected or not self.device:
+            print("[Agilent Serial Error] Cannot set valve: Device not connected.")
+            return False
+
+        all_channels = {
+            str(v): str(VALVE_SLOT_PREFIX + int(ch))
+            for v, ch in VALVE_CHANNELS.items()
+        }
+
+        v_key = str(valve_key).strip()
+        channel = (
+            all_channels.get(v_key)
+            or all_channels.get(f"V{v_key}")
+            or all_channels.get(v_key.lstrip("V"))
+        )
+
+        if not channel:
+            print(f"⚠️ [Agilent Hardware Error] Valve '{valve_key}' not found in VALVE_CHANNELS map!")
+            return False
+
+        scpi_action = "CLOSe" if open_valve else "OPEn"
+        cmd = f"ROUTe:{scpi_action} (@{channel})\r\n"
+
+        try:
+            self.device.reset_input_buffer()
+            self.device.write(cmd.encode("utf-8"))
+            self.device.flush()
+            time.sleep(0.1)
+
+            # Match test script error queue check to catch Agilent hardware collisions
+            self.device.write(b"SYSTem:ERRor?\r\n")
+            self.device.flush()
+            time.sleep(0.05)
+            err_msg = self.device.readline().decode("utf-8", errors="ignore").strip()
+
+            if err_msg and not err_msg.startswith("+0"):
+                print(f"⚠️ Agilent SCPI Error Queue: {err_msg}")
+
+            print(f"✅ SCPI Executed: {cmd.strip()} -> Valve {valve_key} (Channel {channel}) is now {'OPEN' if open_valve else 'CLOSED'}")
+            return True
+
+        except Exception as e:
+            print(f"❌ [Agilent Hardware Error] Failed to toggle valve {valve_key}: {e}")
             self.connected = False
             return False
 
@@ -154,7 +198,8 @@ class Agilent34970A:
             print(f"[Agilent Hardware Error] ESTOP failed: {e}")
             self.connected = False
             return False
-
+        
+    
     # ==========================================================================
     # DISPLAY FORMATTING HELPERS
     # ==========================================================================

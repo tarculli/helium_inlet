@@ -48,6 +48,14 @@ async def websocket_endpoint(websocket: WebSocket):
                     state.enqueue_command(
                         {"cmd": "SET_FLOW_STATE", "state": data.get("state")}
                     )
+                elif cmd == "TOGGLE_VALVE":
+                    state.enqueue_command(
+                        {
+                            "cmd": "TOGGLE_VALVE",
+                            "valve": data.get("valve"),
+                            "state": data.get("state"),
+                        }
+                    )
                 elif cmd == "SET_MODE":
                     state.enqueue_command(
                         {

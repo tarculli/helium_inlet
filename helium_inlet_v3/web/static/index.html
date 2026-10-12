@@ -155,6 +155,32 @@
             box-shadow: 0 0 8px rgba(2, 132, 199, 0.5);
         }
 
+        /* Waste Pathway Valves (V5 & V8): CLOSED = Solid Red | OPEN = Solid Green */
+        .btn-waste {
+            width: 100%;
+            padding: 10px 4px;
+            margin-top: 4px;
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            border-radius: 2px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: #dc2626; /* CLOSED = Solid Red */
+            color: #ffffff;
+            border: 1px solid #b91c1c;
+        }
+        .btn-waste:hover {
+            background: #b91c1c;
+        }
+        .btn-waste.active {
+            background: #16a34a; /* OPEN = Solid Green */
+            color: #ffffff;
+            border: 1px solid #15803d;
+            box-shadow: 0 0 8px rgba(22, 163, 74, 0.4);
+        }
+
         .log-box-vertical {
             background-color: var(--bg);
             border: 1px solid var(--border);
@@ -246,24 +272,6 @@
         .btn-danger:hover { background: #b91c1c; }
         .btn-warning { background: #d97706; color: #ffffff; border: 1px solid #b45309; }
         .btn-warning:hover { background: #b45309; }
-        
-        .btn-secondary {
-            background: var(--accent);
-            color: #ffffff;
-            border: 1px solid var(--accent-hover);
-            padding: 8px 4px;
-            font-size: 0.68rem;
-            font-weight: 800;
-        }
-        .btn-secondary:hover { 
-            background: var(--accent-hover); 
-        }
-        .btn-secondary.active {
-            background: var(--accent-active);
-            color: #ffffff;
-            border: 1px solid #38bdf8;
-            box-shadow: 0 0 8px rgba(2, 132, 199, 0.5);
-        }
 
         .pipe { stroke-width: 2.2; fill: none; transition: stroke 0.3s ease; stroke-linecap: round; }
         .pipe-inner { stroke-width: 2; fill: none; transition: stroke 0.3s ease; stroke-linecap: round; }
@@ -316,8 +324,12 @@
                 <div class="location-section">
                     <div class="location-header">Waste Pathway</div>
                     <div class="waste-controls-grid">
-                        <button id="btn_roughing_pump" class="ctrl-btn btn-secondary" onclick="toggleWastePump('roughing')">Roughing Pump</button>
-                        <button id="btn_hivac_pump" class="ctrl-btn btn-secondary" onclick="toggleWastePump('hivac')">HiVac Pump</button>
+                        <button id="btn_roughing_pump" class="btn-waste" onclick="toggleWasteValve('V5')">
+                            Roughing (V5)<br><span id="lbl_v5">CLOSED</span>
+                        </button>
+                        <button id="btn_hivac_pump" class="btn-waste" onclick="toggleWasteValve('V8')">
+                            HiVac / Turbo (V8)<br><span id="lbl_v8">CLOSED</span>
+                        </button>
                     </div>
                 </div>
 
@@ -501,6 +513,12 @@
         let currentState = 0;
         let ws = null;
 
+        // State tracking for waste valve solenoids V5 & V8
+        let wasteValves = {
+            'V5': false, // Roughing Valve (CH 204)
+            'V8': false  // HiVac Valve (CH 205)
+        };
+
         const pipeOn = 'var(--pipe-on)';
         const pipeOff = 'var(--pipe-off)';
         const MAX_HISTORY = 30;
@@ -508,7 +526,6 @@
         function applyVisualFlowState(stateNum) {
             currentState = stateNum;
 
-            // Highlight active state button (1 through 6)
             for (let i = 1; i <= 6; i++) {
                 const btn = document.getElementById(`btn_state_${i}`);
                 if (btn) btn.classList.toggle('active', i === stateNum);
@@ -651,9 +668,50 @@
             }
         }
 
+        function toggleWasteValve(valveKey) {
+            wasteValves[valveKey] = !wasteValves[valveKey];
+            const isOpen = wasteValves[valveKey];
+            
+            const btnId = valveKey === 'V5' ? 'btn_roughing_pump' : 'btn_hivac_pump';
+            const lblId = valveKey === 'V5' ? 'lbl_v5' : 'lbl_v8';
+            
+            const btn = document.getElementById(btnId);
+            const lbl = document.getElementById(lblId);
+
+            if (btn) btn.classList.toggle('active', isOpen);
+            if (lbl) lbl.innerText = isOpen ? 'OPEN' : 'CLOSED';
+
+            const name = valveKey === 'V5' ? 'Roughing Valve (V5)' : 'HiVac Valve (V8)';
+            injectLocalLog("CMD", `${name} set to ${isOpen ? 'OPEN' : 'CLOSED'}`);
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    command: "TOGGLE_VALVE",
+                    valve: valveKey,
+                    state: isOpen,
+                    timestamp: new Date().toISOString()
+                }));
+            }
+        }
+
         function triggerEstop() {
             const logDesc = "SHUTDOWN INITIATED. ALL VALVES CLOSED.";
             applyVisualFlowState(0);
+
+            // Deactivate Waste Valve UI Controls
+            wasteValves['V5'] = false;
+            wasteValves['V8'] = false;
+            
+            const btnV5 = document.getElementById('btn_roughing_pump');
+            const btnV8 = document.getElementById('btn_hivac_pump');
+            if (btnV5) btnV5.classList.remove('active');
+            if (btnV8) btnV8.classList.remove('active');
+
+            const lblV5 = document.getElementById('lbl_v5');
+            const lblV8 = document.getElementById('lbl_v8');
+            if (lblV5) lblV5.innerText = 'CLOSED';
+            if (lblV8) lblV8.innerText = 'CLOSED';
+
             injectLocalLog("WARN", logDesc);
 
             if (ws && ws.readyState === WebSocket.OPEN) {
@@ -686,24 +744,7 @@
                 ws.send(JSON.stringify({
                     command: "SET_MODE",
                     auto_mode: isAutoMode,
-                    timestamp: new Date().toISOString()
-                }));
-            }
-        }
-
-        function toggleWastePump(pumpType) {
-            const btnId = pumpType === 'roughing' ? 'btn_roughing_pump' : 'btn_hivac_pump';
-            const btn = document.getElementById(btnId);
-            const isActive = btn.classList.toggle('active');
-            const name = pumpType === 'roughing' ? 'Roughing Pump' : 'HiVac Pump';
-            
-            injectLocalLog("CMD", `${name} ${isActive ? 'ENABLED' : 'DISABLED'}`);
-
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({
-                    command: "TOGGLE_WASTE_PUMP",
-                    pump: pumpType,
-                    active: isActive,
+                    mode: isAutoMode ? "AUTO" : "MANUAL",
                     timestamp: new Date().toISOString()
                 }));
             }
@@ -711,14 +752,17 @@
 
         function injectLocalLog(level, msg) {
             const box = document.getElementById("logBox");
+            if (!box) return;
+
             const entry = document.createElement("div");
             entry.className = "log-entry";
             const timeStr = new Date().toLocaleTimeString('en-US', { hour12: false });
             
             let tagClass = "tag-cmd";
-            if(level === "DANGER" || level === "ERROR") tagClass = "tag-danger";
-            if(level === "WARN" || level === "WARNING") tagClass = "tag-warn";
-            if(level === "SUCCESS") tagClass = "tag-success";
+            if (level === "DANGER" || level === "ERROR") tagClass = "tag-danger";
+            if (level === "WARN" || level === "WARNING") tagClass = "tag-warn";
+            if (level === "SUCCESS") tagClass = "tag-success";
+            if (level === "INFO") tagClass = "tag-info";
             
             entry.innerHTML = `<span class="log-time">${timeStr}</span><span class="log-tag ${tagClass}">${level}</span><span class="log-msg" style="font-weight: 600;">${msg}</span>`;
             box.appendChild(entry);

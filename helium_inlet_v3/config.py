@@ -29,6 +29,8 @@ VALVE_CHANNELS = {
     "V2": 9,  # EV6 (Yellow)       -> Channel 209
     "V3": 6,  # EV3 (Red)          -> Channel 206
     "V4": 7,  # EV4 (Green)        -> Channel 207
+    "V5": 4,  # EV1 (Purple)       -> Channel 204
+    "V8": 5,  # EV2 (Blue)         -> Channel 205
 }
 
 # Valve truth table defining operational flow paths
@@ -40,8 +42,8 @@ STATE_VALVE_MAP = {
     2: ["V2", "V3"],        # State 2: Sample -> Trap B | Trap A -> Waste
     3: ["V1", "V3", "V4"],  # State 3: Sample -> Trap A | No Waste
     4: ["V1", "V2", "V3"],  # State 4: Sample -> Trap B | No Waste
-    5: ["V1", "V2", "V4"],  # State 5: Trap A -> Waste  | No Sample In
-    6: ["V2", "V3", "V4"],  # State 6: Trap B -> Waste  | No Sample In
+    5: ["V2", "V3", "V4"],  # State 5: Trap A -> Waste  | No Sample In
+    6: ["V1", "V2", "V4"],  # State 6: Trap B -> Waste  | No Sample In
 }
 
 
