@@ -281,10 +281,10 @@
         .text-silver { fill: #0f172a; font-size: 11px; font-weight: 800; text-anchor: middle; dominant-baseline: central; }
 
         .box-red { fill: #fee2e2; stroke: #dc2626; stroke-width: 1.2; rx: 2px; }
-        .text-red { fill: #991b1b; font-size: 10px; font-weight: 800; text-anchor: middle; dominant-baseline: central; }
+        .text-red { fill: #991b1b; font-size: 9.5px; font-weight: 800; text-anchor: middle; dominant-baseline: central; }
 
         .box-blue { fill: #e0f2fe; stroke: #0284c7; stroke-width: 1.2; rx: 2px; }
-        .text-blue { fill: #0369a1; font-size: 10px; font-weight: 800; text-anchor: middle; dominant-baseline: central; }
+        .text-blue { fill: #0369a1; font-size: 9px; font-weight: 800; text-anchor: middle; dominant-baseline: central; }
     </style>
 </head>
 <body>
@@ -360,7 +360,7 @@
                 <div class="diagram-card">
                     <h2 class="panel-title">Gas Selector & Vacuum Plumbing Diagram</h2>
                     <div class="diagram-svg-container">
-                        <svg viewBox="0 0 780 380" style="width: 100%; height: auto;">
+                        <svg viewBox="0 0 800 380" style="width: 100%; height: auto;">
                             <defs>
                                 <linearGradient id="metallicGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                                     <stop offset="0%" stop-color="#e2e8f0"/>
@@ -372,110 +372,120 @@
                                 </marker>
                             </defs>
 
-                            <!-- Pipe Lines: Gas Selector & MS -->
-                            <path id="pipe_sample_in" class="pipe" d="M 540 190 L 425 190" stroke="var(--pipe-off)" marker-end="url(#arrow)"/>
-                            <path id="pipe_trap_b_in" class="pipe" d="M 380 145 L 380 115" stroke="var(--pipe-off)"/>
-                            <path id="pipe_trap_a_in" class="pipe" d="M 380 235 L 380 265" stroke="var(--pipe-off)"/>
-                            <path id="pipe_waste_out" class="pipe" d="M 335 190 L 265 190" stroke="var(--pipe-off)"/>
+                            <!-- Pipe Lines: Gas Selector In & Central Pipeline -->
+                            <path id="pipe_sample_in" class="pipe" d="M 100 190 L 205 190" stroke="var(--pipe-off)" marker-end="url(#arrow)"/>
+                            <path id="pipe_trap_b_in" class="pipe" d="M 250 145 L 250 115" stroke="var(--pipe-off)"/>
+                            <path id="pipe_trap_a_in" class="pipe" d="M 250 235 L 250 265" stroke="var(--pipe-off)"/>
+                            <path id="pipe_waste_out" class="pipe" d="M 295 190 L 450 190" stroke="var(--pipe-off)"/>
 
                             <!-- Trap B Header Lines -->
-                            <path id="pipe_trap_b_header" class="pipe" d="M 380 75 L 380 40" stroke="var(--pipe-off)"/>
-                            <path id="pipe_penning_b" class="pipe" d="M 380 40 L 470 40" stroke="var(--pipe-off)"/>
-                            <path id="pipe_trap_b_ms" class="pipe" d="M 380 40 L 300 40" stroke="var(--pipe-off)"/>
-                            <path id="pipe_turbo_b_ms" class="pipe" d="M 210 40 L 80 40 L 80 190" stroke="var(--pipe-off)"/>
+                            <path id="pipe_trap_b_header" class="pipe" d="M 250 75 L 250 40" stroke="var(--pipe-off)"/>
+                            <path id="pipe_penning_b" class="pipe" d="M 250 40 L 175 40" stroke="var(--pipe-off)"/>
+                            <path id="pipe_trap_b_ms" class="pipe" d="M 250 40 L 330 40" stroke="var(--pipe-off)"/>
+                            <path id="pipe_turbo_b_ms" class="pipe" d="M 420 40 L 700 40 L 700 190" stroke="var(--pipe-off)"/>
 
                             <!-- Trap A Header Lines -->
-                            <path id="pipe_trap_a_header" class="pipe" d="M 380 305 L 380 340" stroke="var(--pipe-off)"/>
-                            <path id="pipe_penning_a" class="pipe" d="M 380 340 L 470 340" stroke="var(--pipe-off)"/>
-                            <path id="pipe_trap_a_ms" class="pipe" d="M 380 340 L 300 340" stroke="var(--pipe-off)"/>
-                            <path id="pipe_turbo_a_ms" class="pipe" d="M 210 340 L 80 340 L 80 190" stroke="var(--pipe-off)"/>
+                            <path id="pipe_trap_a_header" class="pipe" d="M 250 305 L 250 340" stroke="var(--pipe-off)"/>
+                            <path id="pipe_penning_a" class="pipe" d="M 250 340 L 175 340" stroke="var(--pipe-off)"/>
+                            <path id="pipe_trap_a_ms" class="pipe" d="M 250 340 L 330 340" stroke="var(--pipe-off)"/>
+                            <path id="pipe_turbo_a_ms" class="pipe" d="M 420 340 L 700 340 L 700 190" stroke="var(--pipe-off)"/>
 
                             <!-- MS Main Input Line -->
-                            <path id="pipe_ms_out" class="pipe" d="M 80 190 L 65 190" stroke="var(--pipe-off)" marker-end="url(#arrow)"/>
+                            <path id="pipe_ms_out" class="pipe" d="M 700 190 L 715 190" stroke="var(--pipe-off)" marker-end="url(#arrow)"/>
 
                             <!-- Waste Section Pipe Lines -->
-                            <path id="pipe_penning_wst" class="pipe" d="M 295 190 L 295 150" stroke="var(--pipe-off)"/>
-                            <path id="pipe_waste_rough" class="pipe" d="M 265 190 L 265 150 L 180 150" stroke="var(--pipe-off)" marker-end="url(#arrow)"/>
-                            <path id="pipe_waste_hivac" class="pipe" d="M 265 190 L 265 230 L 125 230 L 125 170 L 125 165" stroke="var(--pipe-off)"/>
-                            <path id="pipe_hivac_conv" class="pipe" d="M 182.5 230 L 182.5 275" stroke="var(--pipe-off)"/>
+                            <!-- 3-Way T-Junction to WST PENN -->
+                            <path id="pipe_penning_wst" class="pipe" d="M 380 190 L 380 148" stroke="var(--pipe-off)"/>
+                            
+                            <!-- Roughing Path (V5) to WST -->
+                            <path id="pipe_waste_rough" class="pipe" d="M 450 190 L 450 140 L 580 140" stroke="var(--pipe-off)"/>
+                            
+                            <!-- HiVac Path (V8) to WST TURBO -->
+                            <path id="pipe_waste_hivac" class="pipe" d="M 450 190 L 450 240 L 570 240" stroke="var(--pipe-off)"/>
+                            
+                            <!-- Path Arrow from WST TURBO to WST -->
+                            <path id="pipe_wst_turbo_to_wst" class="pipe" d="M 612.5 225 L 612.5 158" stroke="var(--pipe-off)" marker-end="url(#arrow)"/>
+
+                            <!-- HiVac Convectron Attachment Line -->
+                            <path id="pipe_hivac_conv" class="pipe" d="M 520 240 L 520 280" stroke="var(--pipe-off)"/>
 
                             <!-- Central Selector Circle -->
-                            <circle cx="380" cy="190" r="45" fill="url(#metallicGrad)" stroke="#334155" stroke-width="1.2"/>
-                            <text x="380" y="190" class="text-silver">GAS SEL.</text>
+                            <circle cx="250" cy="190" r="45" fill="url(#metallicGrad)" stroke="#334155" stroke-width="1.2"/>
+                            <text x="250" y="190" class="text-silver">GAS SEL.</text>
 
                             <!-- Internal Selector Flow Channels -->
-                            <path id="pipe_valve_smp_a" class="pipe-inner" d="M 425 190 Q 400 215 380 235" stroke="var(--pipe-off)"/>
-                            <path id="pipe_valve_b_wst" class="pipe-inner" d="M 380 145 Q 355 165 335 190" stroke="var(--pipe-off)"/>
-                            <path id="pipe_valve_smp_b" class="pipe-inner" d="M 425 190 Q 400 165 380 145" stroke="var(--pipe-off)"/>
-                            <path id="pipe_valve_a_wst" class="pipe-inner" d="M 380 235 Q 355 210 335 190" stroke="var(--pipe-off)"/>
+                            <path id="pipe_valve_smp_a" class="pipe-inner" d="M 205 190 Q 230 215 250 235" stroke="var(--pipe-off)"/>
+                            <path id="pipe_valve_b_wst" class="pipe-inner" d="M 250 145 Q 270 165 295 190" stroke="var(--pipe-off)"/>
+                            <path id="pipe_valve_smp_b" class="pipe-inner" d="M 205 190 Q 230 165 250 145" stroke="var(--pipe-off)"/>
+                            <path id="pipe_valve_a_wst" class="pipe-inner" d="M 250 235 Q 270 210 295 190" stroke="var(--pipe-off)"/>
 
                             <!-- Valve Ports -->
-                            <circle cx="425" cy="190" r="3.5" fill="#334155"/>
-                            <circle cx="380" cy="145" r="3.5" fill="#334155"/>
-                            <circle cx="335" cy="190" r="3.5" fill="#334155"/>
-                            <circle cx="380" cy="235" r="3.5" fill="#334155"/>
+                            <circle cx="205" cy="190" r="3.5" fill="#334155"/>
+                            <circle cx="250" cy="145" r="3.5" fill="#334155"/>
+                            <circle cx="295" cy="190" r="3.5" fill="#334155"/>
+                            <circle cx="250" cy="235" r="3.5" fill="#334155"/>
 
                             <!-- Silver Rectangles (Primary Flow & Vacuum Components) -->
                             <!-- SAMP Box -->
-                            <rect x="540" y="170" width="85" height="40" class="box-silver"/>
-                            <text x="582.5" y="190" class="text-silver">SAMP</text>
+                            <rect x="20" y="170" width="80" height="40" class="box-silver"/>
+                            <text x="60" y="190" class="text-silver">SAMP</text>
 
                             <!-- TRP B & TURBO B Boxes -->
-                            <rect x="335" y="75" width="90" height="40" class="box-silver"/>
-                            <text x="380" y="95" class="text-silver">TRP B</text>
+                            <rect x="205" y="75" width="90" height="40" class="box-silver"/>
+                            <text x="250" y="95" class="text-silver">TRP B</text>
 
-                            <rect x="210" y="23" width="90" height="34" class="box-silver"/>
-                            <text x="255" y="40" class="text-silver">TURBO B</text>
+                            <rect x="330" y="25" width="90" height="30" class="box-silver"/>
+                            <text x="375" y="40" class="text-silver">TURBO B</text>
 
                             <!-- TRP A & TURBO A Boxes -->
-                            <rect x="335" y="265" width="90" height="40" class="box-silver"/>
-                            <text x="380" y="285" class="text-silver">TRP A</text>
+                            <rect x="205" y="265" width="90" height="40" class="box-silver"/>
+                            <text x="250" y="285" class="text-silver">TRP A</text>
 
-                            <rect x="210" y="323" width="90" height="34" class="box-silver"/>
-                            <text x="255" y="340" class="text-silver">TURBO A</text>
+                            <rect x="330" y="325" width="90" height="30" class="box-silver"/>
+                            <text x="375" y="340" class="text-silver">TURBO A</text>
 
                             <!-- MS Box -->
-                            <rect x="15" y="170" width="50" height="40" class="box-silver"/>
-                            <text x="40" y="190" class="text-silver">MS</text>
-
-                            <!-- WST TURBO Box -->
-                            <rect x="145" y="215" width="75" height="30" class="box-silver"/>
-                            <text x="182.5" y="230" class="text-silver">WST TURBO</text>
+                            <rect x="715" y="170" width="50" height="40" class="box-silver"/>
+                            <text x="740" y="190" class="text-silver">MS</text>
 
                             <!-- WST Box -->
-                            <rect x="125" y="135" width="55" height="30" class="box-silver"/>
-                            <text x="152.5" y="150" class="text-silver">WST</text>
+                            <rect x="580" y="125" width="65" height="30" class="box-silver"/>
+                            <text x="612.5" y="140" class="text-silver">WST</text>
+
+                            <!-- WST TURBO Box -->
+                            <rect x="570" y="225" width="85" height="30" class="box-silver"/>
+                            <text x="612.5" y="240" class="text-silver">WST TURBO</text>
 
                             <!-- Smaller Red Rectangles (Penning Pressure Gauges) -->
                             <!-- WST PENN -->
-                            <rect x="255" y="120" width="80" height="30" class="box-red"/>
-                            <text x="295" y="135" class="text-red">WST PENN</text>
+                            <rect x="340" y="120" width="80" height="28" class="box-red"/>
+                            <text x="380" y="134" class="text-red">WST PENN</text>
 
                             <!-- PENNING B -->
-                            <rect x="470" y="23" width="95" height="34" class="box-red"/>
-                            <text x="517.5" y="40" class="text-red">PENNING B</text>
+                            <rect x="80" y="25" width="95" height="30" class="box-red"/>
+                            <text x="127.5" y="40" class="text-red">PENNING B</text>
 
                             <!-- PENNING A -->
-                            <rect x="470" y="323" width="95" height="34" class="box-red"/>
-                            <text x="517.5" y="340" class="text-red">PENNING A</text>
+                            <rect x="80" y="325" width="95" height="30" class="box-red"/>
+                            <text x="127.5" y="340" class="text-red">PENNING A</text>
 
                             <!-- Smaller Blue Rectangle (HiVac Convectron Gauge) -->
-                            <rect x="135" y="275" width="95" height="30" class="box-blue"/>
-                            <text x="182.5" y="290" class="text-blue">HiVac Conv.</text>
+                            <rect x="480" y="280" width="80" height="24" class="box-blue"/>
+                            <text x="520" y="292" class="text-blue">HiVac Conv.</text>
 
-                            <!-- Discrete Auxiliary Valve Indicators (V5 & V8) -->
+                            <!-- Discrete Auxiliary Valve Indicators (V5 & V8) at Elbows -->
                             <!-- Roughing Valve V5 -->
                             <g id="valve_v5_group">
-                                <circle cx="235" cy="150" r="10" fill="#dc2626" stroke="#334155" stroke-width="1.2" id="valve_v5_icon"/>
-                                <path d="M 228 143 L 242 157 M 242 143 L 228 157" stroke="#ffffff" stroke-width="1.5"/>
-                                <text x="235" y="132" font-size="9" font-weight="800" fill="#334155" text-anchor="middle">V5</text>
+                                <circle cx="500" cy="140" r="10" fill="#dc2626" stroke="#334155" stroke-width="1.2" id="valve_v5_icon"/>
+                                <path d="M 493 133 L 507 147 M 507 133 L 493 147" stroke="#ffffff" stroke-width="1.5"/>
+                                <text x="500" y="122" font-size="9" font-weight="800" fill="#334155" text-anchor="middle">V5</text>
                             </g>
 
                             <!-- HiVac Valve V8 -->
                             <g id="valve_v8_group">
-                                <circle cx="235" cy="230" r="10" fill="#dc2626" stroke="#334155" stroke-width="1.2" id="valve_v8_icon"/>
-                                <path d="M 228 223 L 242 237 M 242 223 L 228 237" stroke="#ffffff" stroke-width="1.5"/>
-                                <text x="235" y="248" font-size="9" font-weight="800" fill="#334155" text-anchor="middle">V8</text>
+                                <circle cx="500" cy="240" r="10" fill="#dc2626" stroke="#334155" stroke-width="1.2" id="valve_v8_icon"/>
+                                <path d="M 493 233 L 507 247 M 507 233 L 493 247" stroke="#ffffff" stroke-width="1.5"/>
+                                <text x="500" y="258" font-size="9" font-weight="800" fill="#334155" text-anchor="middle">V8</text>
                             </g>
                         </svg>
                     </div>
@@ -601,6 +611,7 @@
         function updateWastePipes() {
             const pRough = document.getElementById('pipe_waste_rough');
             const pHivac = document.getElementById('pipe_waste_hivac');
+            const pWstTurboToWst = document.getElementById('pipe_wst_turbo_to_wst');
             const v5Icon = document.getElementById('valve_v5_icon');
             const v8Icon = document.getElementById('valve_v8_icon');
             const pPenWst = document.getElementById('pipe_penning_wst');
@@ -611,6 +622,8 @@
 
             if (pRough) pRough.setAttribute('stroke', isV5Open ? pipeOn : pipeOff);
             if (pHivac) pHivac.setAttribute('stroke', isV8Open ? pipeOn : pipeOff);
+            if (pWstTurboToWst) pWstTurboToWst.setAttribute('stroke', isV8Open ? pipeOn : pipeOff);
+            
             if (v5Icon) v5Icon.setAttribute('fill', isV5Open ? '#16a34a' : '#dc2626');
             if (v8Icon) v8Icon.setAttribute('fill', isV8Open ? '#16a34a' : '#dc2626');
 
